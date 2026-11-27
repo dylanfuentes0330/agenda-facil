@@ -1,0 +1,32 @@
+name: Nueva funcionalidad o tarea
+description: Propón una mejora o registra una tarea del proyecto
+title: "[Tarea]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: ¿Qué se necesita y para quién (negocio / cliente / equipo)?
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: [Frontend, Backend, Base de datos, AWS / despliegue, CI/CD, Documentación]
+    validations:
+      required: true
+  - type: input
+    id: responsable
+    attributes:
+      label: Integrante responsable (usuario de GitHub)

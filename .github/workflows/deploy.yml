@@ -1,0 +1,129 @@
+# Despliegue continuo a AWS (AWS Academy Learner Lab).
+#
+# Condiciones:
+#   - Se dispara cuando el workflow "CI" termina con éxito sobre la rama main,
+#     o manualmente (workflow_dispatch) indicando opcionalmente un commit/tag (rollback).
+#   - Solo se ejecuta si la variable de repositorio AWS_DEPLOY_ENABLED = 'true'
+#     (Settings → Secrets and variables → Actions → Variables). Así el pipeline no
+#     falla mientras la infraestructura AWS aún no existe.
+#
+# Secretos requeridos (Settings → Secrets and variables → Actions → Secrets):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN  → credenciales TEMPORALES del
+#       Learner Lab (botón "AWS Details"). Caducan al terminar la sesión: actualizarlas antes de desplegar.
+#   EC2_HOST          → IP elástica o DNS público de la instancia EC2
+#   EC2_SSH_KEY       → contenido de la llave privada (labsuser.pem / vockey)
+#   PROD_DATABASE_URL → mysql://usuario_app:CLAVE@endpoint-rds:3306/agenda_facil
+#   PROD_JWT_SECRET   → secreto aleatorio de 48+ bytes
+# Variables (no secretas):
+#   AWS_REGION (us-east-1), S3_FRONTEND_BUCKET, S3_UPLOADS_BUCKET, CLOUDFRONT_DISTRIBUTION_ID,
+#   PUBLIC_ORIGIN (https://tudominio.com o https://dxxxx.cloudfront.net)
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit, tag o rama a desplegar (vacío = main). Úsalo para hacer rollback.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    name: Backend → EC2
+    if: >-
+      vars.AWS_DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+      - name: Empaquetar backend
+        run: |
+          git rev-parse --short HEAD > backend/REVISION
+          tar --exclude=node_modules --exclude=uploads --exclude=tests --exclude=.env -czf backend.tar.gz backend infra/aws/ec2/remote-deploy.sh infra/aws/ec2/rollback.sh
+      - name: Configurar SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+      - name: Copiar paquete y desplegar
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PROD_JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          S3_UPLOADS_BUCKET: ${{ vars.S3_UPLOADS_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key ec2-user@$EC2_HOST"
+          scp -i ~/.ssh/deploy_key backend.tar.gz ec2-user@$EC2_HOST:/tmp/backend.tar.gz
+          # El archivo de entorno se envía por stdin (no queda en el historial de comandos ni en los logs)
+          printf 'NODE_ENV=production\nPORT=3000\nDATABASE_URL=%s\nJWT_SECRET=%s\nJWT_EXPIRES_IN=8h\nCORS_ORIGINS=%s\nTRUST_PROXY=2\nRATE_LIMIT_AUTH_MAX=20\nSTORAGE_DRIVER=s3\nS3_BUCKET=%s\nAWS_REGION=%s\n' \
+            "$PROD_DATABASE_URL" "$PROD_JWT_SECRET" "$PUBLIC_ORIGIN" "$S3_UPLOADS_BUCKET" "$AWS_REGION" \
+            | $SSH 'sudo install -m 600 -o agenda -g agenda /dev/stdin /etc/agenda-facil/api.env'
+          $SSH 'mkdir -p /tmp/agenda-deploy && tar -xzf /tmp/backend.tar.gz -C /tmp/agenda-deploy && sudo bash /tmp/agenda-deploy/infra/aws/ec2/remote-deploy.sh /tmp/agenda-deploy/backend'
+      - name: Verificar salud de la API
+        env:
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: |
+          for i in $(seq 1 10); do curl -sf "$PUBLIC_ORIGIN/api/health" && exit 0; sleep 6; done
+          echo "La API no respondió correctamente" && exit 1
+
+  frontend:
+    name: Frontend → S3 + CloudFront
+    needs: backend
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Credenciales AWS (temporales del Learner Lab)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Publicar en S3
+        env:
+          BUCKET: ${{ vars.S3_FRONTEND_BUCKET }}
+        run: |
+          aws s3 sync frontend/dist "s3://$BUCKET" --delete --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp frontend/dist/index.html "s3://$BUCKET/index.html" --cache-control "no-cache"
+      - name: Invalidar caché de CloudFront
+        env:
+          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/index.html" "/"
+      - name: Verificar sitio
+        env:
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: curl -sf -o /dev/null -w "HTTP %{http_code}\n" "$PUBLIC_ORIGIN/"
