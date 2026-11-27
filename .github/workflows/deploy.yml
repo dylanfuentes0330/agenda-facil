@@ -7,6 +7,17 @@
 #     (Settings → Secrets and variables → Actions → Variables). Así el pipeline no
 #     falla mientras la infraestructura AWS aún no existe.
 #
+# Seguridad (el repositorio es público): el job "authorize" NO usa secretos ni el entorno
+# production y decide qué commit se despliega. Los jobs con secretos solo corren si él aprueba:
+#   - workflow_run: solo si CI se ejecutó por un PUSH a main de ESTE repositorio (nunca por un
+#     pull_request ni desde un fork, aunque la rama del fork se llame "main") y el commit está en main.
+#   - workflow_dispatch: solo lanzado desde main; la referencia indicada debe resolver a un commit
+#     contenido en main (sirve para rollback a una versión anterior, nunca para código de otra rama).
+#   - El checkout de los jobs de despliegue usa el SHA validado, no la entrada del usuario.
+# Protección adicional obligatoria en GitHub (Settings → Environments → production):
+#   revisores obligatorios + "Deployment branches: main" y guardar los secretos de despliegue como
+#   secretos DEL ENTORNO (no del repositorio), para que solo estén disponibles tras la aprobación.
+#
 # Secretos requeridos (Settings → Secrets and variables → Actions → Secrets):
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN  → credenciales TEMPORALES del
 #       Learner Lab (botón "AWS Details"). Caducan al terminar la sesión: actualizarlas antes de desplegar.
@@ -39,17 +50,71 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  backend:
-    name: Backend → EC2
+  authorize:
+    name: Autorizar origen del despliegue
+    # Sin secretos ni entorno: valida el origen antes de que ningún job pueda leer secretos.
     if: >-
       vars.AWS_DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      (
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_repository.full_name == github.repository &&
+         github.event.workflow_run.repository.full_name == github.repository) ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolver y validar el commit a desplegar
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_REF: ${{ github.event.inputs.ref }}
+        run: |
+          set -euo pipefail
+          MAIN_SHA=$(git rev-parse HEAD)
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            CANDIDATE="$RUN_HEAD_SHA"
+          elif [ -z "$INPUT_REF" ]; then
+            CANDIDATE="$MAIN_SHA"
+          else
+            # Solo caracteres válidos de refs/SHA; evita opciones ("-…") y expresiones de git.
+            if ! printf '%s' "$INPUT_REF" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$'; then
+              echo "::error::Referencia no permitida: $INPUT_REF"
+              exit 1
+            fi
+            CANDIDATE="$INPUT_REF"
+          fi
+          SHA=$(git rev-parse --verify --quiet "${CANDIDATE}^{commit}") || {
+            echo "::error::La referencia no existe en este repositorio: $CANDIDATE"
+            exit 1
+          }
+          if ! git merge-base --is-ancestor "$SHA" "$MAIN_SHA"; then
+            echo "::error::El commit $SHA no pertenece a main; solo se despliegan commits de main."
+            exit 1
+          fi
+          echo "Commit autorizado: $SHA"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend → EC2
+    needs: authorize
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+          ref: ${{ needs.authorize.outputs.sha }}
+          persist-credentials: false
       - name: Empaquetar backend
         run: |
           git rev-parse --short HEAD > backend/REVISION
@@ -92,13 +157,14 @@ jobs:
 
   frontend:
     name: Frontend → S3 + CloudFront
-    needs: backend
+    needs: [authorize, backend]
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+          ref: ${{ needs.authorize.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22

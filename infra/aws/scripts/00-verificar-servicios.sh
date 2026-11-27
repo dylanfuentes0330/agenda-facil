@@ -18,7 +18,7 @@ check() {
   check "EC2 key pair vockey"                 aws ec2 describe-key-pairs --region "$REGION" --key-names vockey
   check "Perfil IAM LabInstanceProfile"        aws iam get-instance-profile --instance-profile-name LabInstanceProfile
   check "RDS (describe-db-instances)"          aws rds describe-db-instances --region "$REGION" --max-items 1
-  check "RDS motores MySQL 8.0"                aws rds describe-db-engine-versions --region "$REGION" --engine mysql --engine-version 8.0 --max-items 1
+  check "RDS motores MySQL 8.4"                aws rds describe-db-engine-versions --region "$REGION" --engine mysql --engine-version 8.4 --max-items 1
   check "S3 (list-buckets)"                    aws s3api list-buckets
   check "CloudFront (list-distributions)"      aws cloudfront list-distributions --max-items 1
   check "CloudFront functions"                 aws cloudfront list-functions --max-items 1
