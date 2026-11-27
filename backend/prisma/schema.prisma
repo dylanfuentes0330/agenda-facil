@@ -1,0 +1,170 @@
+// Agenda Fácil — modelo de datos (MySQL 8 / Amazon RDS for MySQL)
+// Convención: las fechas de las reservas se guardan como "hora local del negocio"
+// (wall-clock) en columnas DATETIME. La zona horaria del negocio se guarda en
+// Business.timezone y se usa para calcular "ahora" al validar reglas de negocio.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUSINESS_ADMIN
+  CLIENT
+}
+
+enum PlanCode {
+  BASICO
+  PROFESIONAL
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum CancelledBy {
+  BUSINESS
+  CLIENT
+}
+
+model Plan {
+  id                Int        @id @default(autoincrement())
+  code              PlanCode   @unique
+  name              String     @db.VarChar(60)
+  description       String     @db.VarChar(255)
+  maxServices       Int?       @map("max_services") // null = sin límite
+  maxClients        Int?       @map("max_clients") // null = sin límite
+  advancedStats     Boolean    @default(false) @map("advanced_stats")
+  trialDays         Int        @default(14) @map("trial_days")
+  businesses        Business[]
+
+  @@map("plans")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique @db.VarChar(191)
+  passwordHash String    @map("password_hash") @db.VarChar(100)
+  name         String    @db.VarChar(120)
+  phone        String?   @db.VarChar(30)
+  role         Role
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  business     Business?
+  clientLinks  Client[]
+
+  @@map("users")
+}
+
+model Business {
+  id                   Int           @id @default(autoincrement())
+  ownerId              Int           @unique @map("owner_id")
+  owner                User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                 String        @db.VarChar(120)
+  slug                 String        @unique @db.VarChar(140)
+  category             String        @db.VarChar(60)
+  description          String?       @db.VarChar(500)
+  phone                String?       @db.VarChar(30)
+  address              String?       @db.VarChar(200)
+  city                 String?       @db.VarChar(80)
+  logoKey              String?       @map("logo_key") @db.VarChar(255)
+  timezone             String        @default("America/Bogota") @db.VarChar(60)
+  slotIntervalMinutes  Int           @default(30) @map("slot_interval_minutes")
+  cancellationHours    Int           @default(2) @map("cancellation_hours")
+  isActive             Boolean       @default(true) @map("is_active")
+  planId               Int           @map("plan_id")
+  plan                 Plan          @relation(fields: [planId], references: [id])
+  trialEndsAt          DateTime      @map("trial_ends_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  services             Service[]
+  hours                BusinessHour[]
+  clients              Client[]
+  reservations         Reservation[]
+
+  @@index([isActive, name])
+  @@map("businesses")
+}
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  businessId      Int           @map("business_id")
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String        @db.VarChar(120)
+  description     String?       @db.VarChar(500)
+  durationMinutes Int           @map("duration_minutes")
+  price           Decimal       @db.Decimal(12, 2)
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  reservations    Reservation[]
+
+  @@unique([businessId, name])
+  @@index([businessId, isActive])
+  @@map("services")
+}
+
+model BusinessHour {
+  id         Int      @id @default(autoincrement())
+  businessId Int      @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  dayOfWeek  Int      @map("day_of_week") // 0 = domingo … 6 = sábado
+  isOpen     Boolean  @default(true) @map("is_open")
+  openTime   String   @map("open_time") @db.Char(5) // "HH:MM"
+  closeTime  String   @map("close_time") @db.Char(5) // "HH:MM"
+
+  @@unique([businessId, dayOfWeek])
+  @@map("business_hours")
+}
+
+model Client {
+  id           Int           @id @default(autoincrement())
+  businessId   Int           @map("business_id")
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId       Int?          @map("user_id")
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name         String        @db.VarChar(120)
+  email        String?       @db.VarChar(191)
+  phone        String?       @db.VarChar(30)
+  notes        String?       @db.VarChar(500)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  reservations Reservation[]
+
+  @@unique([businessId, email])
+  @@unique([businessId, userId])
+  @@index([businessId, name])
+  @@map("clients")
+}
+
+model Reservation {
+  id             Int               @id @default(autoincrement())
+  businessId     Int               @map("business_id")
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId      Int               @map("service_id")
+  service        Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  clientId       Int               @map("client_id")
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  startAt        DateTime          @map("start_at")
+  endAt          DateTime          @map("end_at")
+  status         ReservationStatus @default(CONFIRMED)
+  priceAtBooking Decimal           @map("price_at_booking") @db.Decimal(12, 2)
+  notes          String?           @db.VarChar(500)
+  cancelledAt    DateTime?         @map("cancelled_at")
+  cancelledBy    CancelledBy?      @map("cancelled_by")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@index([businessId, startAt])
+  @@index([businessId, status, startAt])
+  @@index([clientId, startAt])
+  @@map("reservations")
+}
