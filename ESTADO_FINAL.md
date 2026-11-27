@@ -48,7 +48,7 @@ git clone ENTREGA_FINAL/02_CODIGO_FUENTE/agenda-facil-repositorio.bundle agenda-
 ```
 
 ```bash
-cd agenda-facil && for b in develop feature/aws-deployment feature/backend feature/database feature/documentation feature/frontend fix/auditoria-final; do git branch --track "$b" "origin/$b"; done && git remote remove origin
+cd agenda-facil && for b in $(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | grep -v '^HEAD$'); do git show-ref -q --heads "$b" || git branch --track "$b" "origin/$b"; done && git remote remove origin
 ```
 
 ```bash

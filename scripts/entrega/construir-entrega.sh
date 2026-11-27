@@ -38,7 +38,7 @@ cat > "$DEST/02_CODIGO_FUENTE/LEEME.md" <<EOF
   \`fix/auditoria-final\`, etiqueta \`v1.0.0-mvp\`). La rama \`fix/auditoria-final\` contiene las correcciones de la
   auditoría y debe integrarse mediante Pull Request (ver \`ESTADO_FINAL.md\`, P1).
 
-Restaurar: \`git clone agenda-facil-repositorio.bundle agenda-facil\`.
+Restaurar con todas las ramas: ver el comando exacto en \`ESTADO_FINAL.md\` (P1).
 El historial inicial tiene como autor "Claude Code (asistente IA)" y no acredita aportes de integrantes.
 EOF
 
