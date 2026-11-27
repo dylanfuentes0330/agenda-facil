@@ -1,0 +1,39 @@
+name: Reporte de error
+description: Informa un comportamiento incorrecto de Agenda Fácil
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: ¿Qué ocurrió?
+      description: Describe el error y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Ir a '...'
+        2. Hacer clic en '...'
+        3. Ver el error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afectada
+      options: [Frontend, Backend, Base de datos, AWS / despliegue, Documentación]
+    validations:
+      required: true
+  - type: dropdown
+    id: entorno
+    attributes:
+      label: Entorno
+      options: [Local, Producción (AWS)]
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Capturas o registros
+      description: No incluyas contraseñas ni claves.

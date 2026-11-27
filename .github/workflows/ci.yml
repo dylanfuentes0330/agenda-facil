@@ -1,0 +1,140 @@
+# Integración continua de Agenda Fácil.
+# Se ejecuta en cada Pull Request hacia develop/main y en cada push a esas ramas.
+# Etapas: instalar dependencias → lint → build → pruebas (backend con MySQL real) → E2E en navegador.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, build, pruebas)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: agenda_facil_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci_root_password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Credenciales efímeras del contenedor de pruebas (no son secretos de producción)
+      DATABASE_URL: mysql://root:ci_root_password@127.0.0.1:3306/agenda_facil_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build (Prisma generate + verificación de módulos)
+        run: npm run build
+      - name: Pruebas unitarias y de API (MySQL 8)
+        run: npm test
+
+  frontend:
+    name: Frontend (lint, pruebas, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Pruebas de componentes
+        run: npm test
+      - name: Build de producción
+        run: npm run build
+      - name: Guardar build como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  e2e:
+    name: E2E en navegador (flujo MVP)
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: agenda_facil
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci_root_password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:ci_root_password@127.0.0.1:3306/agenda_facil
+      JWT_SECRET: ci-only-jwt-secret-not-used-in-production-0123456789
+      CORS_ORIGINS: http://localhost:4173
+      RATE_LIMIT_AUTH_MAX: '200'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar backend y aplicar migraciones
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma migrate deploy
+          npm run db:seed
+      - name: Build del frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Instalar Playwright (Chromium)
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Iniciar servicios
+        run: |
+          (cd backend && nohup npm start > ../backend.log 2>&1 &)
+          (cd frontend && nohup npx vite preview --port 4173 --strictPort > ../frontend.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://localhost:4173/api/health && break; sleep 2; done
+      - name: Ejecutar flujo E2E
+        run: BASE_URL=http://localhost:4173 node e2e/mvp-flow.cjs
+      - name: Guardar capturas y registros
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-evidencias
+          path: |
+            docs/capturas
+            docs/evidencias/resultado-e2e.md
+            backend.log
+            frontend.log
+          retention-days: 14
