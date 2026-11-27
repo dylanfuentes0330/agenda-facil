@@ -1,0 +1,26 @@
+gitGraph
+  commit id: "chore: estructura inicial"
+  branch develop
+  checkout develop
+  branch feature/database
+  commit id: "feat(db): esquema Prisma"
+  checkout develop
+  merge feature/database
+  branch feature/backend
+  commit id: "feat(api): reservas"
+  checkout develop
+  merge feature/backend
+  branch feature/frontend
+  commit id: "feat(web): panel"
+  checkout develop
+  merge feature/frontend
+  branch feature/aws-deployment
+  commit id: "ci: workflows + CFN"
+  checkout develop
+  merge feature/aws-deployment
+  branch feature/documentation
+  commit id: "docs: README + APA"
+  checkout develop
+  merge feature/documentation
+  checkout main
+  merge develop tag: "v1.0.0"

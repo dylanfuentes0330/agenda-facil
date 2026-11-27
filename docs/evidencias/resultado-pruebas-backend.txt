@@ -1,0 +1,37 @@
+
+> agenda-facil-backend@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /home/user/agenda-facil/backend
+
+Script executed successfully.
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": MySQL database "agenda_facil_test_1795740660538_5823" at "localhost:3306"
+
+1 migration found in prisma/migrations
+
+Applying migration `20261127002845_init`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261127002845_init/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+Planes listos: BASICO, PROFESIONAL
+ ✓ tests/api/reservations.test.js (11 tests) 661ms
+ ✓ tests/api/auth.test.js (12 tests) 535ms
+ ✓ tests/api/business.test.js (8 tests) 595ms
+ ✓ tests/api/isolation.test.js (6 tests) 292ms
+ ✓ tests/unit/time.test.js (4 tests) 17ms
+ ✓ tests/unit/availability.test.js (5 tests) 5ms
+
+ Test Files  6 passed (6)
+      Tests  46 passed (46)
+   Start at  00:51:00
+   Duration  7.47s (transform 193ms, setup 50ms, collect 1.70s, tests 2.10s, environment 3ms, prepare 298ms)
+
+Script executed successfully.

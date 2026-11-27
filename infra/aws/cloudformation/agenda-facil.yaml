@@ -1,0 +1,498 @@
+# ARCHIVO GENERADO por build-template.py a partir de agenda-facil.src.yaml y ../ec2/bootstrap-ec2.sh. No editar a mano.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Agenda Fácil - Infraestructura SaaS (VPC, EC2 + Nginx + Node.js, RDS MySQL privada,
+  S3 privados, CloudFront con OAC y Route 53 opcional). Pensada para AWS Academy Learner Lab:
+  NO crea roles IAM (usa el perfil existente LabInstanceProfile).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agenda-facil
+    AllowedPattern: '^[a-z0-9-]{3,30}$'
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: vockey
+    Description: Par de llaves para SSH (en Learner Lab existe "vockey").
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t2.micro, t3.micro, t3.small]
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+    Description: Perfil de instancia existente (Learner Lab no permite crear roles IAM).
+  SSHAllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+    Description: >-
+      Rango autorizado para SSH. Recomendado: tu IP pública /32. GitHub Actions usa IPs
+      variables, por lo que el despliegue automático por SSH requiere 0.0.0.0/0 (solo llave, sin contraseña).
+  RestrictHttpToCloudFront:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Si es true, el puerto 80 de EC2 solo acepta tráfico desde CloudFront (prefix list administrada).
+  CloudFrontPrefixListId:
+    Type: String
+    Default: pl-3b927c52
+    Description: >-
+      ID de la prefix list "com.amazonaws.global.cloudfront.origin-facing" en la región.
+      Verificar con: aws ec2 describe-managed-prefix-lists --filters Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t3.micro, db.t4g.micro, db.t3.small]
+  DBName:
+    Type: String
+    Default: agenda_facil
+  DBMasterUsername:
+    Type: String
+    Default: agenda_admin
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]{3,15}$'
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    MaxLength: 41
+    AllowedPattern: '^[a-zA-Z0-9_#%+=-]+$'
+    Description: Contraseña del administrador de RDS (no se muestra; no la subas a GitHub).
+  DomainName:
+    Type: String
+    Default: ''
+    Description: (Opcional) Dominio personalizado, p. ej. www.midominio.com. Requiere AcmCertificateArn.
+  AcmCertificateArn:
+    Type: String
+    Default: ''
+    Description: (Opcional) ARN del certificado ACM en us-east-1 que cubre DomainName.
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: (Opcional) ID de la zona alojada de Route 53 del dominio para crear el registro alias.
+
+Conditions:
+  HasCustomDomain: !And [!Not [!Equals [!Ref DomainName, '']], !Not [!Equals [!Ref AcmCertificateArn, '']]]
+  CreateDnsRecord: !And [!Condition HasCustomDomain, !Not [!Equals [!Ref HostedZoneId, '']]]
+  OnlyCloudFront: !Equals [!Ref RestrictHttpToCloudFront, 'true']
+  IsUsEast1: !Equals [!Ref 'AWS::Region', us-east-1]
+
+Resources:
+  # ---------------------------------------------------------------- Red
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-vpc' }]
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: { VpcId: !Ref Vpc, InternetGatewayId: !Ref InternetGateway }
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-public-a' }]
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-public-b' }]
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.11.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-private-a' }]
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.12.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-private-b' }]
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetA, RouteTableId: !Ref PublicRouteTable }
+  PublicSubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetB, RouteTableId: !Ref PublicRouteTable }
+  # Las subredes privadas no tienen ruta a Internet: RDS queda aislada.
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PrivateSubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateSubnetA, RouteTableId: !Ref PrivateRouteTable }
+  PrivateSubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateSubnetB, RouteTableId: !Ref PrivateRouteTable }
+
+  # ---------------------------------------------------------------- Seguridad
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Agenda Facil - API en EC2 (HTTP desde CloudFront, SSH restringido)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - !If
+          - OnlyCloudFront
+          - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourcePrefixListId: !Ref CloudFrontPrefixListId, Description: HTTP solo desde CloudFront }
+          - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP publico }
+        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SSHAllowedCidr, Description: SSH administracion y despliegue }
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-web-sg' }]
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Agenda Facil - RDS MySQL solo accesible desde la instancia EC2
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 3306, ToPort: 3306, SourceSecurityGroupId: !Ref WebSecurityGroup, Description: MySQL desde la API }
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-db-sg' }]
+
+  # ---------------------------------------------------------------- Base de datos (RDS)
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subredes privadas para RDS
+      SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-db'
+      Engine: mysql
+      EngineVersion: '8.0'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: '20'
+      StorageType: gp2
+      StorageEncrypted: true
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 1
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: false
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-db' }]
+
+  # ---------------------------------------------------------------- Cómputo (EC2)
+  ApiInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfileName
+      SubnetId: !Ref PublicSubnetA
+      SecurityGroupIds: [!Ref WebSecurityGroup]
+      MetadataOptions: { HttpTokens: required, HttpEndpoint: enabled }
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: { VolumeSize: 16, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-api' }]
+      UserData:
+        Fn::Base64: |
+          #!/usr/bin/env bash
+          # Preparación inicial de la instancia EC2 (Amazon Linux 2023) para la API de Agenda Fácil.
+          # Se ejecuta automáticamente como "user data" desde la plantilla CloudFormation, o puede
+          # pegarse manualmente en "Advanced details → User data" al lanzar la instancia desde la consola.
+          # Idempotente: puede ejecutarse varias veces.
+          set -euo pipefail
+
+          APP_DIR=/opt/agenda-facil
+          ENV_DIR=/etc/agenda-facil
+
+          dnf -y update
+          dnf -y install nginx tar gzip xz mariadb105
+
+          # Node.js 22 LTS desde nodejs.org, verificando la suma SHA-256 publicada
+          if ! command -v node >/dev/null || ! node -v | grep -q '^v22\.'; then
+            cd /tmp
+            BASE=https://nodejs.org/dist/latest-v22.x
+            curl -fsSLO "$BASE/SHASUMS256.txt"
+            FILE=$(grep -o 'node-v22[^ ]*-linux-x64.tar.xz' SHASUMS256.txt | head -n1)
+            curl -fsSLO "$BASE/$FILE"
+            grep " $FILE\$" SHASUMS256.txt | sha256sum -c -
+            tar -xJf "$FILE" -C /usr/local --strip-components=1
+            rm -f "$FILE" SHASUMS256.txt
+          fi
+
+          # Usuario de sistema sin shell para ejecutar la API (mínimo privilegio)
+          id agenda >/dev/null 2>&1 || useradd --system --home-dir "$APP_DIR" --shell /sbin/nologin agenda
+          install -d -o agenda -g agenda "$APP_DIR" "$APP_DIR/releases"
+          install -d -m 750 -o root -g agenda "$ENV_DIR"
+          [ -f "$ENV_DIR/api.env" ] || install -m 600 -o agenda -g agenda /dev/null "$ENV_DIR/api.env"
+
+          cat > /etc/systemd/system/agenda-facil-api.service <<'UNIT'
+          [Unit]
+          Description=Agenda Fácil API (Node.js + Express)
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User=agenda
+          Group=agenda
+          WorkingDirectory=/opt/agenda-facil/current
+          EnvironmentFile=/etc/agenda-facil/api.env
+          ExecStart=/usr/local/bin/node src/server.js
+          Restart=always
+          RestartSec=5
+          NoNewPrivileges=true
+          PrivateTmp=true
+          ProtectSystem=full
+          ProtectHome=true
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          cat > /etc/nginx/conf.d/agenda-facil.conf <<'NGINX'
+          # Nginx como proxy inverso: recibe tráfico de CloudFront en el puerto 80 y lo
+          # reenvía a Node.js (127.0.0.1:3000). Solo expone /api/; el frontend se sirve desde S3.
+          server {
+              listen 80 default_server;
+              listen [::]:80 default_server;
+              server_name _;
+              server_tokens off;
+              client_max_body_size 3m;
+
+              location /api/ {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+                  proxy_read_timeout 30s;
+              }
+
+              location / {
+                  return 404;
+              }
+          }
+          NGINX
+
+          # Evita que el server por defecto de nginx.conf compita con el nuestro
+          sed -i 's/listen       80;/listen       8080;/; s/listen       \[::\]:80;/listen       [::]:8080;/' /etc/nginx/nginx.conf || true
+
+          systemctl daemon-reload
+          systemctl enable --now nginx
+          systemctl enable agenda-facil-api
+          nginx -t && systemctl reload nginx
+          echo "Bootstrap completado. La API se inicia con el primer despliegue (remote-deploy.sh)."
+  ApiElasticIp:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachment
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref ApiInstance
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-api-eip' }]
+
+  # ---------------------------------------------------------------- Almacenamiento (S3)
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-frontend-${AWS::AccountId}'
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadOnly
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt FrontendBucket.Arn, !Sub '${FrontendBucket.Arn}/*']
+            Condition: { Bool: { aws:SecureTransport: 'false' } }
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-uploads-${AWS::AccountId}'
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+      VersioningConfiguration: { Status: Enabled }
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
+  UploadsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UploadsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt UploadsBucket.Arn, !Sub '${UploadsBucket.Arn}/*']
+            Condition: { Bool: { aws:SecureTransport: 'false' } }
+
+  # ---------------------------------------------------------------- CDN (CloudFront)
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${ProjectName}-spa-rewrite'
+      AutoPublish: true
+      FunctionConfig: { Comment: Reescribe rutas de la SPA a index.html, Runtime: cloudfront-js-2.0 }
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          // Rutas sin extensión (p. ej. /panel/citas) → index.html de la SPA de React
+          if (!request.uri.includes('.')) { request.uri = '/index.html'; }
+          return request;
+        }
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${ProjectName}-api-no-cache'
+        Comment: Sin caché efectiva para la API; reenvía Authorization
+        MinTTL: 0
+        DefaultTTL: 0
+        MaxTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          HeadersConfig: { HeaderBehavior: whitelist, Headers: [Authorization] }
+          QueryStringsConfig: { QueryStringBehavior: all }
+          CookiesConfig: { CookieBehavior: none }
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${ProjectName} - frontend S3 + API EC2'
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        DefaultRootObject: index.html
+        Aliases: !If [HasCustomDomain, [!Ref DomainName], !Ref 'AWS::NoValue']
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - { AcmCertificateArn: !Ref AcmCertificateArn, SslSupportMethod: sni-only, MinimumProtocolVersion: TLSv1.2_2021 }
+          - { CloudFrontDefaultCertificate: true }
+        Origins:
+          - Id: frontend-s3
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt FrontendOriginAccessControl.Id
+            S3OriginConfig: { OriginAccessIdentity: '' }
+          - Id: api-ec2
+            DomainName: !If
+              - IsUsEast1
+              - !Join ['', ['ec2-', !Join ['-', !Split ['.', !Ref ApiElasticIp]], '.compute-1.amazonaws.com']]
+              - !Join ['', ['ec2-', !Join ['-', !Split ['.', !Ref ApiElasticIp]], '.', !Ref 'AWS::Region', '.compute.amazonaws.com']]
+            CustomOriginConfig: { HTTPPort: 80, OriginProtocolPolicy: http-only, OriginReadTimeout: 30 }
+        DefaultCacheBehavior:
+          TargetOriginId: frontend-s3
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          FunctionAssociations:
+            - { EventType: viewer-request, FunctionARN: !GetAtt SpaRewriteFunction.FunctionMetadata.FunctionARN }
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api-ec2
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # Managed-AllViewerExceptHostHeader
+
+  # ---------------------------------------------------------------- DNS (Route 53, opcional)
+  DnsRecordIpv4:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDnsRecord
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+  DnsRecordIpv6:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDnsRecord
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+
+Outputs:
+  CloudFrontUrl:
+    Description: URL pública HTTPS de la aplicación (dominio por defecto de CloudFront)
+    Value: !Sub 'https://${Distribution.DomainName}'
+  CustomDomainUrl:
+    Condition: HasCustomDomain
+    Value: !Sub 'https://${DomainName}'
+  DistributionId:
+    Description: Variable CLOUDFRONT_DISTRIBUTION_ID de GitHub
+    Value: !Ref Distribution
+  FrontendBucketName:
+    Description: Variable S3_FRONTEND_BUCKET de GitHub
+    Value: !Ref FrontendBucket
+  UploadsBucketName:
+    Description: Variable S3_UPLOADS_BUCKET de GitHub
+    Value: !Ref UploadsBucket
+  ApiPublicIp:
+    Description: Secreto EC2_HOST de GitHub (IP elástica)
+    Value: !Ref ApiElasticIp
+  DatabaseEndpoint:
+    Description: Endpoint privado de RDS (solo accesible desde EC2)
+    Value: !GetAtt Database.Endpoint.Address
+  DatabaseUrlTemplate:
+    Description: Plantilla para el secreto PROD_DATABASE_URL (reemplazar la contraseña del usuario de aplicación)
+    Value: !Sub 'mysql://agenda_app:CLAVE_USUARIO_APP@${Database.Endpoint.Address}:3306/${DBName}'
