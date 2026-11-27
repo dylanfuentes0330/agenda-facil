@@ -185,7 +185,9 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Sub '${ProjectName}-db'
       Engine: mysql
-      EngineVersion: '8.0'
+      # 8.4 LTS: 8.0 salió de soporte estándar de RDS (31/07/2026) y cobraría Extended Support.
+      # Solo la versión principal: RDS elige su versión menor por defecto y AutoMinorVersionUpgrade la mantiene.
+      EngineVersion: '8.4'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: '20'
       StorageType: gp2

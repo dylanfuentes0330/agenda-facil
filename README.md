@@ -149,7 +149,7 @@ agenda-facil/
 ## Requisitos previos
 
 - **Node.js 22** (mínimo 20) y npm 10.
-- **MySQL 8.0** local (o Docker: `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8.0`).
+- **MySQL 8.4** local, la misma versión principal que RDS y CI (o Docker: `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8.4`).
 - Git. Para desplegar: AWS CLI v2 y acceso a AWS Academy Learner Lab.
 
 ## Instalación y ejecución local
