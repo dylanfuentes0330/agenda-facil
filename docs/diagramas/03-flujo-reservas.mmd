@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  actor C as Cliente
+  participant FE as Frontend (React)
+  participant API as API Express
+  participant DB as MySQL (RDS)
+  C->>FE: Elige negocio, servicio y fecha
+  FE->>API: GET /api/public/businesses/:slug/availability
+  API->>DB: Horario del día + reservas activas
+  API-->>FE: Franjas (disponible / ocupada / pasada)
+  C->>FE: Selecciona hora y confirma
+  FE->>API: POST /api/client/reservations (JWT)
+  API->>API: Validar datos (Zod) y rol CLIENT
+  API->>DB: BEGIN (READ COMMITTED)
+  API->>DB: SELECT … FROM businesses WHERE id=? FOR UPDATE
+  Note over API,DB: Candado por negocio: las reservas simultáneas<br/>del mismo negocio esperan su turno
+  API->>DB: ¿Servicio activo? ¿Dentro del horario? ¿No es pasado?
+  API->>DB: ¿Existe reserva que se solape [inicio, fin)?
+  alt Horario libre
+    API->>DB: INSERT reserva (CONFIRMED) + ficha de cliente
+    API->>DB: COMMIT
+    API-->>FE: 201 Reserva confirmada
+    FE-->>C: Pantalla de confirmación
+  else Ocupado / regla incumplida
+    API->>DB: ROLLBACK
+    API-->>FE: 409 SLOT_TAKEN o 422 (PAST_TIME, OUTSIDE_HOURS…)
+    FE-->>C: Mensaje y refresco de horarios
+  end

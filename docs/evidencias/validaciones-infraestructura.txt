@@ -1,0 +1,26 @@
+# Validaciones de infraestructura y scripts — 2026-11-27T01:02:11Z (entorno local)
+
+## cfn-lint cfn-lint 1.61.0
+$ cfn-lint infra/aws/cloudformation/agenda-facil.yaml
+W1011 Use dynamic references over parameters for secrets
+infra/aws/cloudformation/agenda-facil.yaml:196:7
+
+exit code: 4 (4 = solo advertencias; 0 errores)
+
+## shellcheck version: 0.9.0
+Sin hallazgos en 9 scripts
+
+## Sintaxis YAML de workflows (PyYAML)
+OK .github/ISSUE_TEMPLATE/bug_report.yml
+OK .github/ISSUE_TEMPLATE/config.yml
+OK .github/ISSUE_TEMPLATE/feature_request.yml
+OK .github/dependabot.yml
+OK .github/workflows/ci.yml
+OK .github/workflows/deploy.yml
+
+## JSON de políticas IAM
+OK infra/aws/iam/politica-api-ec2-s3-uploads.json
+OK infra/aws/iam/politica-ci-despliegue-frontend.json
+OK infra/aws/iam/rol-confianza-ec2.json
+
+Nota: actionlint no pudo ejecutarse en este entorno; los workflows no se han ejecutado aún en GitHub Actions.

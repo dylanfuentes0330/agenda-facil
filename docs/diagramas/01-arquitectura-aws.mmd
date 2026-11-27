@@ -1,0 +1,20 @@
+flowchart TB
+  U["Usuarios<br/>(negocios y clientes)<br/>navegador / móvil"] -->|HTTPS| R53
+  R53["Amazon Route 53<br/>DNS del dominio personalizado"] -->|alias A/AAAA| CF
+  CF["Amazon CloudFront<br/>CDN + certificado TLS (ACM)<br/>función SPA"]
+  CF -->|"/* (OAC, firmado SigV4)"| S3F["Amazon S3 (privado)<br/>Frontend React compilado"]
+  CF -->|"/api/* (sin caché)"| EC2
+  subgraph VPC["VPC 10.20.0.0/16"]
+    subgraph PUB["Subred pública"]
+      EC2["Amazon EC2 t3.micro<br/>Amazon Linux 2023<br/>Nginx → Node.js/Express (systemd)<br/>IP elástica"]
+    end
+    subgraph PRIV["Subredes privadas (sin ruta a Internet)"]
+      RDS[("Amazon RDS<br/>MySQL 8.0 db.t3.micro<br/>cifrado, sin acceso público")]
+    end
+  end
+  EC2 -->|"3306 (solo desde SG de EC2)"| RDS
+  EC2 -->|"SDK v3: Put/Get (URLs prefirmadas)"| S3U["Amazon S3 (privado)<br/>Logos de negocios"]
+  IAM["AWS IAM<br/>LabInstanceProfile / políticas<br/>de mínimo privilegio"] -.->|perfil de instancia| EC2
+  IAM -.-> S3U
+  GH["GitHub Actions<br/>CI/CD"] -->|"SSH: release + migraciones"| EC2
+  GH -->|"s3 sync + invalidación"| S3F
