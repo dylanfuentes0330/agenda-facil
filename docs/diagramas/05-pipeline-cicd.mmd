@@ -1,0 +1,22 @@
+flowchart LR
+  Dev["Integrante<br/>rama feature/*"] -->|push| PR["Pull Request<br/>→ develop"]
+  PR --> CI
+  subgraph CI["Workflow CI (GitHub Actions)"]
+    direction TB
+    B["Backend<br/>npm ci → lint → build →<br/>pruebas con MySQL 8"]
+    F["Frontend<br/>npm ci → lint → pruebas →<br/>build (artefacto dist)"]
+    E["E2E Playwright<br/>flujo MVP completo"]
+    B --> E
+    F --> E
+  end
+  CI -->|"revisión + aprobación"| Dv["develop"]
+  Dv -->|"PR de release"| M["main"]
+  M -->|"CI exitoso + AWS_DEPLOY_ENABLED"| D
+  subgraph D["Workflow Deploy"]
+    direction TB
+    D1["Backend → EC2 por SSH<br/>release nueva · migraciones ·<br/>health check · rollback automático"]
+    D2["Frontend → S3<br/>+ invalidación CloudFront"]
+    D1 --> D2
+  end
+  D --> P["Producción<br/>https://dominio"]
+  P -.->|"falla: workflow_dispatch(ref anterior)<br/>o rollback.sh"| D

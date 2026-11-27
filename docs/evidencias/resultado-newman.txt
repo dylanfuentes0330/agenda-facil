@@ -1,0 +1,210 @@
+newman
+
+Agenda Fácil — API REST
+
+❏ 0. Sistema
+↳ Health check
+  GET http://localhost:3000/api/health [200 OK, 993B, 22ms]
+  ✓  HTTP 200
+  ✓  BD ok
+
+↳ Planes
+  GET http://localhost:3000/api/public/plans [200 OK, 1.33kB, 6ms]
+  ✓  HTTP 200
+  ✓  2 planes
+
+❏ 1. Autenticación
+↳ Registro de negocio
+  POST http://localhost:3000/api/auth/register/business [201 Created, 1.9kB, 348ms]
+  ✓  HTTP 201
+  ✓  Rol de negocio
+
+↳ Registro de negocio — validación (400)
+  POST http://localhost:3000/api/auth/register/business [400 Bad Request, 1.54kB, 7ms]
+  ✓  HTTP 400
+  ✓  VALIDATION_ERROR
+
+↳ Registro de cliente
+  POST http://localhost:3000/api/auth/register/client [201 Created, 1.36kB, 367ms]
+  ✓  HTTP 201
+
+↳ Correo duplicado (409)
+  POST http://localhost:3000/api/auth/register/client [409 Conflict, 1.09kB, 5ms]
+  ✓  HTTP 409
+
+↳ Inicio de sesión
+  POST http://localhost:3000/api/auth/login [200 OK, 1.89kB, 325ms]
+  ✓  HTTP 200
+  ✓  Devuelve token
+
+↳ Inicio de sesión incorrecto (401)
+  POST http://localhost:3000/api/auth/login [401 Unauthorized, 1.07kB, 315ms]
+  ✓  HTTP 401
+
+↳ Perfil /me
+  GET http://localhost:3000/api/auth/me [200 OK, 1.57kB, 7ms]
+  ✓  HTTP 200
+
+↳ Sin token (401)
+  GET http://localhost:3000/api/auth/me [401 Unauthorized, 989B, 3ms]
+  ✓  HTTP 401
+
+❏ 2. Negocio — configuración
+↳ Crear servicio
+  POST http://localhost:3000/api/business/services [201 Created, 1.05kB, 14ms]
+  ✓  HTTP 201
+
+↳ Listar servicios
+  GET http://localhost:3000/api/business/services [200 OK, 1.07kB, 8ms]
+  ✓  HTTP 200
+
+↳ Editar servicio
+  PUT http://localhost:3000/api/business/services/11 [200 OK, 1.04kB, 13ms]
+  ✓  HTTP 200
+  ✓  Precio actualizado
+
+↳ Configurar horarios
+  PUT http://localhost:3000/api/business/hours [200 OK, 1.55kB, 25ms]
+  ✓  HTTP 200
+
+↳ Consultar horarios
+  GET http://localhost:3000/api/business/hours [200 OK, 1.55kB, 6ms]
+  ✓  HTTP 200
+  ✓  7 días
+
+↳ Preferencias de agenda
+  PUT http://localhost:3000/api/business/settings [200 OK, 1.44kB, 34ms]
+  ✓  HTTP 200
+
+↳ Perfil del negocio
+  PUT http://localhost:3000/api/business/profile [200 OK, 1.47kB, 14ms]
+  ✓  HTTP 200
+
+↳ Cliente no puede usar endpoints del negocio (403)
+  GET http://localhost:3000/api/business/services [403 Forbidden, 998B, 6ms]
+  ✓  HTTP 403
+
+❏ 3. Portal del cliente — reservas
+↳ Directorio de negocios
+  GET http://localhost:3000/api/public/businesses?q=mwy9mzbd [200 OK, 1.21kB, 7ms]
+  ✓  HTTP 200
+  ✓  Aparece el negocio
+
+↳ Detalle público del negocio
+  GET http://localhost:3000/api/public/businesses/barberia-postman-mwy9mzbd [200 OK, 1.97kB, 9ms]
+  ✓  HTTP 200
+
+↳ Disponibilidad
+  GET http://localhost:3000/api/public/businesses/barberia-postman-mwy9mzbd/availability?serviceId=11&date=2026-11-30 [200 OK, 2.85kB, 13ms]
+  ✓  HTTP 200
+  ✓  Hay franjas
+
+↳ Reservar cita
+  POST http://localhost:3000/api/client/reservations [201 Created, 1.45kB, 26ms]
+  ✓  HTTP 201
+
+↳ Doble reserva bloqueada (409)
+  POST http://localhost:3000/api/client/reservations [409 Conflict, 1.03kB, 13ms]
+  ✓  HTTP 409
+  ✓  SLOT_TAKEN
+
+↳ Reserva fuera de horario (422)
+  POST http://localhost:3000/api/client/reservations [422 Unprocessable Entity, 1.04kB, 16ms]
+  ✓  HTTP 422
+
+↳ Mis reservas
+  GET http://localhost:3000/api/client/reservations?scope=upcoming [200 OK, 1.47kB, 10ms]
+  ✓  HTTP 200
+  ✓  1 reserva
+
+❏ 4. Negocio — citas y clientes
+↳ Listar citas (filtro fecha)
+  GET http://localhost:3000/api/business/reservations?from=2026-11-30&to=2026-11-30 [200 OK, 1.35kB, 9ms]
+  ✓  HTTP 200
+  ✓  Ve la cita del cliente
+
+↳ Disponibilidad (negocio)
+  GET http://localhost:3000/api/business/reservations/availability?serviceId=11&date=2026-11-30 [200 OK, 2.86kB, 11ms]
+  ✓  HTTP 200
+
+↳ Crear cita con cliente nuevo
+  POST http://localhost:3000/api/business/reservations [201 Created, 1.27kB, 22ms]
+  ✓  HTTP 201
+
+↳ Reprogramar cita
+  PUT http://localhost:3000/api/business/reservations/15 [200 OK, 1.28kB, 22ms]
+  ✓  HTTP 200
+
+↳ Cancelar cita (negocio)
+  PATCH http://localhost:3000/api/business/reservations/15/status [200 OK, 1.31kB, 14ms]
+  ✓  HTTP 200
+  ✓  Cancelada
+
+↳ Filtrar por estado
+  GET http://localhost:3000/api/business/reservations?status=CANCELLED [200 OK, 1.36kB, 8ms]
+  ✓  HTTP 200
+
+↳ Listar clientes
+  GET http://localhost:3000/api/business/clients [200 OK, 1.27kB, 8ms]
+  ✓  HTTP 200
+
+↳ Registrar cliente
+  POST http://localhost:3000/api/business/clients [201 Created, 1.11kB, 11ms]
+  ✓  HTTP 201
+
+↳ Editar cliente
+  PUT http://localhost:3000/api/business/clients/15 [200 OK, 1.1kB, 10ms]
+  ✓  HTTP 200
+
+↳ Historial del cliente
+  GET http://localhost:3000/api/business/clients/14/reservations [200 OK, 1.46kB, 8ms]
+  ✓  HTTP 200
+
+↳ Eliminar cliente sin historial
+  DELETE http://localhost:3000/api/business/clients/15 [200 OK, 943B, 12ms]
+  ✓  HTTP 200
+
+↳ Panel del día (dashboard)
+  GET http://localhost:3000/api/business/dashboard [200 OK, 1.55kB, 12ms]
+  ✓  HTTP 200
+
+❏ 5. Cancelación del cliente y aislamiento
+↳ Cliente cancela su reserva
+  PATCH http://localhost:3000/api/client/reservations/14/cancel [200 OK, 1.48kB, 13ms]
+  ✓  HTTP 200
+
+↳ Segundo negocio (para aislamiento)
+  POST http://localhost:3000/api/auth/register/business [201 Created, 1.85kB, 336ms]
+  ✓  HTTP 201
+
+↳ Otro negocio NO ve el servicio ajeno (404)
+  GET http://localhost:3000/api/business/services/11 [404 Not Found, 984B, 7ms]
+  ✓  HTTP 404
+
+↳ Otro negocio NO ve la cita ajena (404)
+  GET http://localhost:3000/api/business/reservations/15 [404 Not Found, 983B, 6ms]
+  ✓  HTTP 404
+
+↳ Otro negocio NO ve el cliente ajeno (404)
+  GET http://localhost:3000/api/business/clients/14 [404 Not Found, 983B, 7ms]
+  ✓  HTTP 404
+
+┌─────────────────────────┬───────────────────┬───────────────────┐
+│                         │          executed │            failed │
+├─────────────────────────┼───────────────────┼───────────────────┤
+│              iterations │                 1 │                 0 │
+├─────────────────────────┼───────────────────┼───────────────────┤
+│                requests │                42 │                 0 │
+├─────────────────────────┼───────────────────┼───────────────────┤
+│            test-scripts │                42 │                 0 │
+├─────────────────────────┼───────────────────┼───────────────────┤
+│      prerequest-scripts │                 1 │                 0 │
+├─────────────────────────┼───────────────────┼───────────────────┤
+│              assertions │                55 │                 0 │
+├─────────────────────────┴───────────────────┴───────────────────┤
+│ total run duration: 2.7s                                        │
+├─────────────────────────────────────────────────────────────────┤
+│ total data received: 19.03kB (approx)                           │
+├─────────────────────────────────────────────────────────────────┤
+│ average response time: 50ms [min: 3ms, max: 367ms, s.d.: 106ms] │
+└─────────────────────────────────────────────────────────────────┘

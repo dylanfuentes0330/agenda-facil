@@ -1,0 +1,23 @@
+flowchart LR
+  subgraph FE["Frontend — React 19 + Vite (SPA)"]
+    direction TB
+    Pages["Páginas<br/>Landing · Registro · Ingreso<br/>Directorio · Reserva · Mis reservas<br/>Panel: Resumen, Citas, Servicios,<br/>Horarios, Clientes, Configuración"]
+    Comp["Componentes reutilizables<br/>ui.jsx · SlotPicker · Layouts<br/>AccountForms"]
+    Ctx["Contextos<br/>AuthContext (JWT) · ToastContext"]
+    ApiC["api/client.js<br/>fetch + manejo de errores"]
+    Pages --> Comp --> Ctx
+    Pages --> ApiC
+  end
+  subgraph BE["Backend — Node.js + Express"]
+    direction TB
+    MW["Middleware<br/>helmet · CORS · rate limit<br/>authenticate · requireRole · validate (Zod)"]
+    Routes["Rutas REST<br/>/auth · /public · /client · /business/*"]
+    Svc["Servicios<br/>availability (franjas)<br/>reservations (transacción + FOR UPDATE)"]
+    Lib["lib<br/>time · storage (S3/local) · plans · errors"]
+    ORM["Prisma Client"]
+    MW --> Routes --> Svc --> ORM
+    Routes --> Lib
+  end
+  ApiC -->|"HTTPS JSON /api/*"| MW
+  ORM -->|SQL parametrizado| DB[("MySQL 8 / RDS")]
+  Lib -->|AWS SDK| S3[("S3 logos")]
