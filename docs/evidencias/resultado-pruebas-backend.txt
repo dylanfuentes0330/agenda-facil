@@ -8,7 +8,7 @@
 Script executed successfully.
 Environment variables loaded from .env
 Prisma schema loaded from prisma/schema.prisma
-Datasource "db": MySQL database "agenda_facil_test_1795740660538_5823" at "localhost:3306"
+Datasource "db": MySQL database "agenda_facil_test_1795742930438_15898" at "localhost:3306"
 
 1 migration found in prisma/migrations
 
@@ -22,16 +22,16 @@ migrations/
       
 All migrations have been successfully applied.
 Planes listos: BASICO, PROFESIONAL
- ✓ tests/api/reservations.test.js (11 tests) 661ms
- ✓ tests/api/auth.test.js (12 tests) 535ms
- ✓ tests/api/business.test.js (8 tests) 595ms
- ✓ tests/api/isolation.test.js (6 tests) 292ms
- ✓ tests/unit/time.test.js (4 tests) 17ms
+ ✓ tests/api/reservations.test.js (12 tests) 751ms
+ ✓ tests/api/business.test.js (8 tests) 556ms
+ ✓ tests/api/auth.test.js (12 tests) 566ms
+ ✓ tests/api/isolation.test.js (6 tests) 303ms
+ ✓ tests/unit/time.test.js (5 tests) 24ms
  ✓ tests/unit/availability.test.js (5 tests) 5ms
 
  Test Files  6 passed (6)
-      Tests  46 passed (46)
-   Start at  00:51:00
-   Duration  7.47s (transform 193ms, setup 50ms, collect 1.70s, tests 2.10s, environment 3ms, prepare 298ms)
+      Tests  48 passed (48)
+   Start at  01:28:50
+   Duration  7.41s (transform 130ms, setup 46ms, collect 1.63s, tests 2.20s, environment 1ms, prepare 281ms)
 
 Script executed successfully.

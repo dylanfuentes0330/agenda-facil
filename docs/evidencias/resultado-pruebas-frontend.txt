@@ -5,11 +5,11 @@
 
  RUN  v3.2.7 /home/user/agenda-facil/frontend
 
- ✓ src/__tests__/utils.test.js (4 tests) 18ms
- ✓ src/__tests__/components.test.jsx (6 tests) 409ms
+ ✓ src/__tests__/utils.test.js (4 tests) 19ms
+ ✓ src/__tests__/components.test.jsx (6 tests) 408ms
 
  Test Files  2 passed (2)
       Tests  10 passed (10)
-   Start at  00:51:09
-   Duration  1.35s (transform 166ms, setup 252ms, collect 333ms, tests 427ms, environment 546ms, prepare 130ms)
+   Start at  01:28:59
+   Duration  1.33s (transform 173ms, setup 187ms, collect 390ms, tests 427ms, environment 570ms, prepare 118ms)
 

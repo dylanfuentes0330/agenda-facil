@@ -95,7 +95,7 @@ Comprueba que el bootstrap terminó: `systemctl status nginx` y `node -v` (debe 
 | Secret | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` | Credenciales de *AWS Details* (actualizar cada sesión) |
 | Secret | `EC2_HOST` | `ApiPublicIp` |
 | Secret | `EC2_SSH_KEY` | Contenido completo de `labsuser.pem` |
-| Secret | `PROD_DATABASE_URL` | `mysql://agenda_app:CLAVE@ENDPOINT_RDS:3306/agenda_facil` |
+| Secret | `PROD_DATABASE_URL` | `mysql://agenda_app:CLAVE@ENDPOINT_RDS:3306/agenda_facil` (la clave debe ir **codificada para URL** y sin comillas simples; recomendable usar solo letras, números y `_`) |
 | Secret | `PROD_JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | Variable | `AWS_REGION` | `us-east-1` |
 | Variable | `S3_FRONTEND_BUCKET` / `S3_UPLOADS_BUCKET` | Outputs del stack |

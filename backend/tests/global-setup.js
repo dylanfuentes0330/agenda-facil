@@ -13,8 +13,15 @@ function run(cmd, env, input) {
 }
 
 export default function setup({ provide }) {
-  dotenv.config({ path: '.env.test' }); // las variables ya definidas (p. ej. en CI) tienen prioridad
+  // Prioridad: variables ya definidas (p. ej. en CI) > .env.test.local (ignorado por Git) > .env.test
+  dotenv.config({ path: ['.env.test.local', '.env.test'] });
   const base = new URL(process.env.DATABASE_URL);
+  if (base.password === 'CLAVE_LOCAL') {
+    throw new Error(
+      'DATABASE_URL usa el marcador CLAVE_LOCAL de .env.test. Crea backend/.env.test.local con ' +
+        'DATABASE_URL="mysql://agenda:<tu clave>@127.0.0.1:3306/agenda_facil_test" (ver README).',
+    );
+  }
   tempDb = `agenda_facil_test_${Date.now()}_${process.pid}`;
   // Conexión administrativa a la base de pruebas indicada en .env.test (debe existir).
   const serverUrl = base;

@@ -144,6 +144,26 @@ describe('Flujo MVP de reservas', () => {
     expect(del.status).toBe(409);
   });
 
+  it('limita a 5 las reservas futuras activas de un cliente en el mismo negocio (anti-abuso)', async () => {
+    const c = await registerClient();
+    const wednesday = nextDate(3);
+    const times = ['09:00', '10:00', '11:00', '12:00', '13:00'];
+    for (const t of times) {
+      const ok = await api().post('/api/client/reservations').set(auth(c.token)).send({ businessSlug: biz.business.slug, serviceId: service.id, startAt: `${wednesday}T${t}` });
+      expect(ok.status).toBe(201);
+    }
+    const sixth = await api().post('/api/client/reservations').set(auth(c.token)).send({ businessSlug: biz.business.slug, serviceId: service.id, startAt: `${wednesday}T15:00` });
+    expect(sixth.status).toBe(422);
+    expect(sixth.body.error.code).toBe('TOO_MANY_ACTIVE_RESERVATIONS');
+    const mine = await api().get('/api/client/reservations').set(auth(c.token));
+    await api().patch(`/api/client/reservations/${mine.body.reservations[0].id}/cancel`).set(auth(c.token));
+    const afterCancel = await api().post('/api/client/reservations').set(auth(c.token)).send({ businessSlug: biz.business.slug, serviceId: service.id, startAt: `${wednesday}T15:00` });
+    expect(afterCancel.status).toBe(201);
+    // El negocio no tiene este tope al agendar manualmente
+    const byBusiness = await api().post('/api/business/reservations').set(auth(biz.token)).send({ serviceId: service.id, clientId: afterCancel.body.reservation.client.id, startAt: `${wednesday}T16:00` });
+    expect(byBusiness.status).toBe(201);
+  });
+
   it('marca como completada una cita pasada y la refleja en el panel', async () => {
     const svc = await prisma.service.findUnique({ where: { id: service.id } });
     const clientRow = await prisma.client.findFirst({ where: { businessId: biz.business.id } });

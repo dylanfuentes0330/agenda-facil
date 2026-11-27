@@ -293,7 +293,7 @@ def build(img, toc_pages=None):
     # 1
     h1(doc, '1. Introducción')
     para(doc, 'Los pequeños y medianos negocios que trabajan con citas —barberías, peluquerías, salones de belleza, consultorios, estudios de tatuajes y centros de estética— suelen administrar su agenda mediante mensajes de WhatsApp, llamadas telefónicas o un cuaderno. Este documento actualiza la *Propuesta de Proyecto SaaS – Agenda Fácil* (Equipo Agenda Fácil, 2026) y describe la solución desarrollada a partir de ella: una plataforma de software como servicio (SaaS) que permite a cada negocio publicar sus servicios y horarios, y a sus clientes reservar en línea sin conflictos de horario.')
-    para(doc, 'El informe presenta el problema, los objetivos y el alcance; los requisitos; la arquitectura tecnológica y su correspondencia con los servicios de Amazon Web Services (AWS) definidos en la propuesta original (Amazon EC2, Amazon RDS, Amazon S3, Amazon CloudFront, Amazon Route 53 y AWS IAM); el diseño de la base de datos, el frontend en React y el backend en Node.js; la seguridad; la integración y entrega continuas (CI/CD); la estrategia de trabajo con Git y GitHub; el proceso de despliegue en AWS Academy Learner Lab; las pruebas ejecutadas con sus resultados reales; el análisis de costos y las limitaciones encontradas. A lo largo del texto se distingue explícitamente lo **diseñado**, lo **desarrollado**, lo **probado**, lo **desplegado** y lo **pendiente**.')
+    para(doc, 'El informe presenta el problema, los objetivos y el alcance; los requisitos; la arquitectura tecnológica y su correspondencia con los servicios de Amazon Web Services (AWS) definidos en la propuesta original (Amazon EC2, Amazon RDS, Amazon S3, Amazon CloudFront, Amazon Route 53 y AWS IAM); el diseño de la base de datos, el frontend en React y el backend en Node.js; la seguridad; la integración y entrega continuas (CI/CD); la estrategia de trabajo con Git y GitHub; el proceso de despliegue en AWS Academy Learner Lab; las pruebas ejecutadas con sus resultados reales; el análisis de costos y las limitaciones encontradas. A lo largo del texto se distingue explícitamente lo **diseñado**, lo **desarrollado**, lo **probado**, lo **desplegado** y lo **pendiente**. El documento sigue las normas de la séptima edición del manual de publicaciones de la American Psychological Association (2020).')
 
     # 2
     h1(doc, '2. Planteamiento del problema')
@@ -406,12 +406,12 @@ def build(img, toc_pages=None):
     figure(doc, 'Portal de reservas: selección de servicio, fecha y hora', img['06-reserva-disponibilidad'], 6.0, 'Captura de entorno local.')
     figure(doc, 'Agenda del negocio con filtros y acciones', img['09-agenda-negocio'], 6.0, 'Captura de entorno local.')
     figure(doc, 'Ficha del cliente con historial de reservas', img['12-ficha-cliente-historial'], 6.0, 'Captura de entorno local.')
-    figure(doc, 'Vistas móviles: panel del negocio y horarios ocupados', img['14-dashboard-movil'], 2.6, 'Captura de entorno local en un viewport de 390 × 844 píxeles. La vista de horarios ocupados se encuentra en docs/capturas.', max_height=5.2)
+    figure(doc, 'Vista móvil del panel del negocio', img['14-dashboard-movil'], 2.6, 'Captura de entorno local en un viewport de 390 × 844 píxeles. La vista móvil de horarios ocupados se incluye en el Anexo A.', max_height=5.2)
 
     # 12
     h1(doc, '12. Descripción del backend')
     para(doc, 'La API REST expone rutas públicas (salud, planes, directorio, detalle y disponibilidad de un negocio), de autenticación (registro, inicio de sesión, perfil y cambio de contraseña), de cliente (crear, consultar y cancelar reservas) y de negocio (perfil, configuración, plan, logo, horarios, servicios, clientes, reservas, disponibilidad y panel). Las respuestas de error siguen un formato uniforme con código, mensaje y detalle por campo.')
-    para(doc, 'La regla crítica se implementa en el servicio de reservas: dentro de una transacción con aislamiento READ COMMITTED se ejecuta `SELECT … FOR UPDATE` sobre la fila del negocio, se validan las reglas (servicio activo, día abierto, dentro del horario, no en el pasado, como máximo 90 días adelante y, para clientes, coincidencia con la grilla de franjas) y se comprueba que no exista otra reserva activa que se solape; solo entonces se inserta. Si dos clientes reservan a la vez, la segunda transacción espera y recibe un error 409 de horario no disponible. Esta técnica de lecturas con bloqueo está documentada en el manual de MySQL (Oracle, s.f.).')
+    para(doc, 'La regla crítica se implementa en el servicio de reservas: dentro de una transacción con aislamiento READ COMMITTED se ejecuta `SELECT … FOR UPDATE` sobre la fila del negocio, se validan las reglas (servicio activo, día abierto, dentro del horario, no en el pasado, como máximo 90 días adelante y, para clientes, coincidencia con la grilla de franjas) y se comprueba que no exista otra reserva activa que se solape; solo entonces se inserta. Si dos clientes reservan a la vez, la segunda transacción espera y recibe un error 409 de horario no disponible. Esta técnica de lecturas con bloqueo está documentada en el manual de MySQL (Oracle, s.f.). Además, para evitar que un cliente bloquee la agenda de un negocio, cada cliente puede tener como máximo cinco reservas futuras confirmadas en el mismo negocio; el negocio no tiene ese límite al agendar manualmente.')
     para(doc, 'El aislamiento multi-tenant se garantiza porque el identificador del negocio nunca se recibe del cliente: se obtiene del usuario autenticado en cada petición y todas las consultas se filtran por él; un recurso de otro negocio responde 404. Las variables de entorno se validan al iniciar y el servidor se ejecuta como servicio de systemd con un usuario sin privilegios.')
 
     # 13
@@ -425,7 +425,9 @@ def build(img, toc_pages=None):
         ['Inyección SQL', 'Consultas parametrizadas de Prisma', 'Revisión de código'],
         ['Entradas maliciosas', 'Validación Zod, límite de 100 KB, verificación de tipo real de imágenes', 'Pruebas 400'],
         ['Fuerza bruta', 'Rate limiting: 20 intentos / 15 min por IP', 'Prueba 429'],
-        ['Cabeceras y CORS', 'helmet; lista blanca de orígenes', 'Prueba de cabeceras'],
+        ['Abuso de reservas', 'Máximo 5 reservas futuras por cliente y negocio', 'Prueba con verificación de mutación'],
+        ['Secreto JWT débil', 'El servidor no inicia en producción con secretos de ejemplo o de menos de 32 caracteres', 'Prueba unitaria'],
+        ['Cabeceras y CORS', 'helmet en la API; política de cabeceras de seguridad de CloudFront para el frontend; lista blanca de orígenes', 'Prueba de cabeceras (API)'],
         ['Secretos', 'Variables de entorno, GitHub Secrets, parámetro NoEcho', '.gitignore y workflows'],
         ['Red', 'HTTPS en CloudFront; RDS privada; EC2 solo recibe tráfico de CloudFront; IMDSv2', 'Plantilla (pendiente verificar en AWS)'],
     ], widths=[1.5, 3.0, 2.0])
@@ -433,9 +435,9 @@ def build(img, toc_pages=None):
 
     # 14
     h1(doc, '14. Implementación de CI/CD')
-    para(doc, 'Se configuraron dos flujos de trabajo de GitHub Actions (GitHub, s.f.-b). El flujo **CI** se ejecuta en cada Pull Request y en cada *push* a develop y main, con tres trabajos: backend (instalación, lint, build y pruebas contra un contenedor MySQL 8), frontend (instalación, lint, pruebas y build, publicando el resultado como artefacto) y una prueba de extremo a extremo con Playwright (Microsoft, s.f.) que recorre el flujo MVP completo y conserva capturas como artefacto.')
-    para(doc, 'El flujo **Deploy** se activa cuando CI finaliza con éxito sobre main o manualmente indicando un commit. Despliega el backend en EC2 por SSH creando una nueva versión en una carpeta de *releases*, instala dependencias, aplica migraciones, cambia un enlace simbólico, reinicia el servicio y verifica el endpoint de salud; si la verificación falla, restaura automáticamente la versión anterior. Luego publica el frontend en S3 e invalida la caché de CloudFront. Las credenciales se leen de GitHub Secrets y el despliegue solo se ejecuta si la variable AWS_DEPLOY_ENABLED vale true. El procedimiento de *rollback* tiene tres niveles: automático, reejecución manual con un commit anterior y un script en el servidor.')
-    para(doc, '**Estado:** los comandos de ambos trabajos de CI se ejecutaron con éxito en un clon limpio del repositorio en el entorno de desarrollo; los flujos todavía no se han ejecutado en GitHub porque el repositorio remoto no ha sido creado. No se declara ninguna ejecución exitosa en GitHub Actions.')
+    para(doc, 'Se configuraron dos flujos de trabajo de GitHub Actions (GitHub, s.f.-b). El flujo **CI** se ejecuta en cada Pull Request y en cada *push* a develop y main, con cuatro trabajos: backend (instalación, lint, build y pruebas contra un contenedor MySQL 8), frontend (instalación, lint, pruebas y build, publicando el resultado como artefacto), infraestructura (cfn-lint sobre la plantilla, ShellCheck sobre los scripts y actionlint sobre los propios workflows) y una prueba de extremo a extremo con Playwright (Microsoft, s.f.) que recorre el flujo MVP completo y conserva capturas como artefacto.')
+    para(doc, 'El flujo **Deploy** se activa cuando CI finaliza con éxito sobre main o manualmente indicando un commit. Despliega el backend en EC2 por SSH creando una nueva versión en una carpeta de *releases*, instala dependencias, aplica migraciones, cambia un enlace simbólico, reinicia el servicio y verifica el endpoint de salud; si la verificación falla, restaura automáticamente la versión anterior. Luego publica el frontend en S3 e invalida la caché de CloudFront. Las credenciales se leen de GitHub Secrets y el despliegue solo se ejecuta si la variable AWS_DEPLOY_ENABLED vale true. El procedimiento de *rollback* tiene tres niveles: automático, reejecución manual con un commit anterior y un script en el servidor que solo considera versiones marcadas como sanas.')
+    para(doc, '**Estado:** los flujos se validaron con actionlint sin hallazgos y los comandos de los trabajos de CI se ejecutaron con éxito en un clon limpio del repositorio; todavía no se han ejecutado en GitHub porque el repositorio remoto no ha sido publicado. No se declara ninguna ejecución exitosa en GitHub Actions.')
 
     # 15
     h1(doc, '15. Estrategia Git/GitHub')
@@ -453,19 +455,22 @@ def build(img, toc_pages=None):
         'Desplegar con el flujo Deploy (o con los scripts manuales equivalentes) y verificar la URL de CloudFront y el endpoint /api/health.',
         'Para el dominio personalizado: adquirir el dominio en un registrador externo, emitir el certificado en ACM (us-east-1) con validación DNS y crear el registro alias en Route 53 o un CNAME en el registrador.',
     ])
+    para(doc, 'Los scripts del servidor se ensayaron en una simulación local que reproduce la instancia (usuario de sistema, carpetas de versiones, archivo de entorno con el mismo formato del workflow y MySQL 8 con un usuario de privilegios limitados). Se comprobaron cinco escenarios: fallo antes de activar, dos despliegues correctos, una versión que no arranca con *rollback* automático y un *rollback* manual. Esta simulación detectó y permitió corregir dos errores críticos del procedimiento de *rollback* antes de usarlo en AWS.')
     para(doc, '**Estado:** la plantilla fue validada con cfn-lint sin errores (una advertencia sobre el uso de referencias dinámicas para la contraseña, aceptada por las restricciones del laboratorio) y los scripts con ShellCheck. **Ningún recurso ha sido creado todavía en AWS** y **no se dispone aún de dominio**; las capturas de la consola de AWS y de la aplicación en producción están [pendientes de incorporarse en esta sección].')
 
     # 17
     h1(doc, '17. Pruebas y resultados')
     para(doc, 'Las pruebas se ejecutaron el 27 de noviembre de 2026 en el entorno de desarrollo (Node.js 22 y MySQL 8.0.46). Las pruebas de backend crean una base de datos temporal en cada ejecución y la eliminan al terminar. Los resultados se resumen en la Tabla 6 y los registros completos están en docs/evidencias.')
     table(doc, 'Resultados de las pruebas ejecutadas', ['Tipo de prueba', 'Herramienta', 'Alcance', 'Resultado'], [
-        ['Unitarias y de API', 'Vitest + Supertest (Vitest, s.f.)', 'Registro, login, roles, servicios, horarios, disponibilidad, reservas, concurrencia, cancelaciones, aislamiento, validación, rate limiting, cabeceras, archivos', '46 de 46 aprobadas'],
+        ['Unitarias y de API', 'Vitest + Supertest (Vitest, s.f.)', 'Registro, login, roles, servicios, horarios, disponibilidad, reservas, concurrencia, cancelaciones, aislamiento, validación, rate limiting, cabeceras, archivos', '48 de 48 aprobadas'],
         ['Componentes', 'Vitest + Testing Library', 'Validaciones, formato, login, rutas protegidas, selector de franjas', '10 de 10 aprobadas'],
         ['Extremo a extremo', 'Playwright (Chromium)', 'Flujo MVP completo y ausencia de desbordamiento en móvil, tablet y escritorio', '18 de 18 pasos'],
         ['API (colección)', 'Postman / Newman', '42 peticiones en orden de uso real', '55 de 55 aserciones'],
         ['Concurrencia (mutación)', 'Vitest', 'Misma prueba con el bloqueo desactivado', 'Falla: 9 de 10 reservas duplicadas'],
+        ['Infraestructura', 'cfn-lint, ShellCheck, actionlint', 'Plantilla, 9 scripts y 2 workflows', '0 errores (1 advertencia documentada)'],
+        ['Despliegue (simulación)', 'Bash, MySQL 8', 'Releases, migraciones, health check y rollback', '5 de 5 escenarios'],
     ], widths=[1.2, 1.4, 2.6, 1.3])
-    para(doc, 'La prueba de concurrencia envía diez solicitudes simultáneas para el mismo horario: con el bloqueo, exactamente una se confirma y nueve reciben 409. Para demostrar que la prueba es significativa, se desactivó temporalmente el bloqueo y se repitió tres veces: en todas fallaron por crearse nueve reservas duplicadas. Las pruebas también detectaron y permitieron corregir tres defectos reales: un desbordamiento horizontal en tablet causado por la grilla del panel, mensajes de validación con concordancia de género incorrecta y el uso de mayúsculas iniciales en cada palabra de las fechas. Además, la segunda ejecución consecutiva de la colección Postman fue bloqueada por el limitador de intentos, lo que confirma su funcionamiento.')
+    para(doc, 'La prueba de concurrencia envía diez solicitudes simultáneas para el mismo horario: con el bloqueo, exactamente una se confirma y nueve reciben 409. Para demostrar que la prueba es significativa, se desactivó temporalmente el bloqueo y se repitió tres veces: en todas fallaron por crearse nueve reservas duplicadas. Todas las pruebas se re-ejecutaron durante la auditoría técnica final sobre un clon limpio, con los mismos resultados. Las pruebas también detectaron y permitieron corregir tres defectos reales de la interfaz: un desbordamiento horizontal en tablet causado por la grilla del panel, mensajes de validación con concordancia de género incorrecta y el uso de mayúsculas iniciales en cada palabra de las fechas. Además, la segunda ejecución consecutiva de la colección Postman fue bloqueada por el limitador de intentos, lo que confirma su funcionamiento.')
 
     # 18
     h1(doc, '18. Análisis de costos')
@@ -499,8 +504,9 @@ def build(img, toc_pages=None):
         ['Frontend React', 'Sí', 'Sí', 'Sí (local)', 'No'],
         ['API REST y reglas de negocio', 'Sí', 'Sí', 'Sí (local)', 'No'],
         ['Base de datos y migraciones', 'Sí', 'Sí', 'Sí (MySQL 8 local)', 'No'],
-        ['Workflows de CI', 'Sí', 'Sí', 'Comandos en local', 'No ejecutado en GitHub'],
-        ['Workflow de despliegue', 'Sí', 'Sí', 'No', 'No'],
+        ['Workflows de CI', 'Sí', 'Sí', 'actionlint + clon limpio', 'No ejecutado en GitHub'],
+        ['Scripts de despliegue y rollback', 'Sí', 'Sí', 'Simulación local', 'No'],
+        ['Workflow de despliegue', 'Sí', 'Sí', 'actionlint', 'No'],
         ['Infraestructura AWS (CloudFormation)', 'Sí', 'Sí', 'Validación estática', 'No'],
         ['Dominio personalizado', 'Sí', 'Configuración', 'No', 'No'],
         ['Pagos, notificaciones, multiusuario', 'Mejora futura', 'No', 'No', 'No'],

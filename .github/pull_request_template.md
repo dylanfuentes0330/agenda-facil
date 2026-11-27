@@ -20,7 +20,7 @@
 
 ## ¿Cómo se probó?
 
-<!-- Comandos ejecutados y resultado. Ej.: `npm test --prefix backend` → 46 pruebas OK -->
+<!-- Comandos ejecutados y resultado. Ej.: `npm test --prefix backend` → 48 pruebas OK -->
 
 ## Capturas (si aplica)
 

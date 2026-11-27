@@ -7,6 +7,10 @@
 # Uso: sudo bash remote-deploy.sh /ruta/al/backend
 set -euo pipefail
 
+# En Amazon Linux 2023, sudo usa secure_path=/sbin:/bin:/usr/sbin:/usr/bin, que NO incluye
+# /usr/local/bin (donde el bootstrap instala Node.js). Se fija el PATH explícitamente.
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 SRC="${1:?Indica la ruta del directorio backend a desplegar}"
 APP_DIR=/opt/agenda-facil
 ENV_FILE=/etc/agenda-facil/api.env
@@ -21,7 +25,19 @@ mkdir -p "$APP_DIR/releases"
 cp -a "$SRC" "$RELEASE"
 chown -R agenda:agenda "$RELEASE"
 
-run_as_app() { sudo -u agenda bash -c "set -a; source '$ENV_FILE'; set +a; cd '$RELEASE'; $1"; }
+# Si algo falla ANTES de activar la release (npm, Prisma, migraciones), se elimina la carpeta
+# incompleta para que nunca pueda elegirse como destino de un rollback.
+ACTIVATED=false
+# shellcheck disable=SC2317,SC2329  # se invoca mediante trap EXIT (ShellCheck no lo detecta)
+cleanup_failed_release() {
+  if [ "$ACTIVATED" = false ] && [ -d "$RELEASE" ]; then
+    echo "ERROR: el despliegue falló antes de activarse. Se descarta $RELEASE (la versión en producción no cambió)."
+    rm -rf "$RELEASE"
+  fi
+}
+trap cleanup_failed_release EXIT
+
+run_as_app() { sudo -u agenda env "PATH=$PATH" "HOME=$APP_DIR" bash -c "set -a; source '$ENV_FILE'; set +a; cd '$RELEASE'; $1"; }
 
 echo "==> Instalando dependencias de producción"
 run_as_app "npm ci --omit=dev --no-audit --no-fund"
@@ -33,6 +49,7 @@ echo "==> Cargando planes (idempotente)"
 run_as_app "node prisma/seed.js"
 
 echo "==> Activando release"
+ACTIVATED=true
 ln -sfn "$RELEASE" "$APP_DIR/current"
 systemctl restart agenda-facil-api
 
@@ -40,8 +57,9 @@ echo "==> Verificando salud"
 for _ in $(seq 1 15); do
   if curl -sf http://127.0.0.1:3000/api/health >/dev/null; then
     echo "Despliegue correcto: $REVISION"
+    touch "$RELEASE/.deploy-ok"   # marca de release sana: solo estas son destino de rollback
     # Conserva las 5 releases más recientes
-    find "$APP_DIR/releases" -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs -r rm -rf
+    find "$APP_DIR/releases" -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | { grep -vxF "$RELEASE" || true; } | xargs -r rm -rf
     exit 0
   fi
   sleep 2
