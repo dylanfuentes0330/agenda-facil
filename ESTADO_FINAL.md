@@ -25,7 +25,7 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 
 | Elemento | Estado | Motivo |
 |---|---|---|
-| Repositorio en GitHub | PENDIENTE DE ACCESO | No existe un repositorio `agenda-facil` en la cuenta conectada y el token del entorno es inválido (no se puede crear) |
+| Repositorio en GitHub | PENDIENTE DE ACCESO | El repositorio **`dylanfuentes0330/agenda-facil` ya existe y está vacío** (verificado con `git ls-remote`). Desde esta sesión el push fue rechazado (HTTP 403: la instalación de la Claude GitHub App de la sesión no cubre el repositorio, incluso tras ajustar permisos). Se publica desde el equipo de la persona líder (P1) |
 | Ejecución real de CI en GitHub | PENDIENTE DE ACCESO | Depende del repositorio publicado |
 | Commits y Pull Requests de integrantes | PENDIENTE DE INTERVENCIÓN HUMANA | Solo pueden hacerlos los integrantes desde sus cuentas |
 | Despliegue en AWS | PENDIENTE DE ACCESO | No hay sesión de AWS Academy ni autorización de uso de créditos |
@@ -36,7 +36,7 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 ## 3. Acciones del equipo, en orden de prioridad
 
 ### P1. Publicar el repositorio (líder) — PENDIENTE DE ACCESO
-1. En <https://github.com/new>: *Repository name* `agenda-facil`, **Public** (necesario para protección de ramas en cuentas gratuitas), **sin** README/.gitignore/licencia → *Create repository*.
+1. El repositorio vacío **ya existe**: <https://github.com/dylanfuentes0330/agenda-facil>. Verificar que sea **Public** (*Settings → General → Danger Zone → Change visibility*), necesario para proteger ramas en cuentas gratuitas.
 2. En el equipo de la persona líder, con [GitHub CLI](https://cli.github.com/) instalado:
 
 ```bash
@@ -52,15 +52,16 @@ cd agenda-facil && for b in $(git for-each-ref --format='%(refname:lstrip=3)' re
 ```
 
 ```bash
-bash scripts/github/publicar-en-github.sh TU_USUARIO agenda-facil public
+bash scripts/github/publicar-en-github.sh dylanfuentes0330 agenda-facil public
 ```
 
 3. *Settings → Collaborators → Add people*: invitar a cada integrante (cada uno acepta desde su correo o <https://github.com/notifications>).
 4. *Pull requests → New pull request*: base `develop` ← compare `fix/auditoria-final` → *Create pull request*. Esto ejecuta el CI real. Pedir a otro integrante que lo revise y apruebe; luego *Merge*. Después PR `develop → main`.
 5. Captura de *Actions* con los 4 jobs en verde. Si algo falla, copiar el log del job fallido para corregirlo.
 
-> Alternativa: si la persona líder crea el repositorio vacío y comparte su nombre (`usuario/agenda-facil`) en una sesión
-> de Claude Code con acceso a esa cuenta, el asistente puede publicarlo y ejecutar el CI.
+> Alternativa: iniciar una **nueva** sesión de Claude Code con el repositorio `dylanfuentes0330/agenda-facil`
+> seleccionado (tras instalar la Claude GitHub App en él desde <https://github.com/apps/claude/installations/select_target>)
+> y pedir que publique el bundle y ejecute el CI.
 
 ### P2. Aportes individuales (cada integrante) — PENDIENTE DE INTERVENCIÓN HUMANA
 Antes: completar perfil (foto, nombre, bio) y configurar Git con el correo de su cuenta:
