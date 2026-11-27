@@ -164,10 +164,10 @@ git clone https://github.com/OWNER/REPO.git agenda-facil
 cd agenda-facil && npm run install:all
 ```
 
-2. Crear la base de datos y un usuario **solo para desarrollo local** (la contraseña `agenda_local_dev` coincide con `backend/.env.test`; si usas otra, actualiza ese archivo):
+2. Crear la base de datos y un usuario **solo para desarrollo local**. Sustituye `<CLAVE_LOCAL>` por una contraseña elegida por ti, que deberás repetir en `DATABASE_URL` de `backend/.env` y `backend/.env.test.local` (ambos ignorados por Git); no la publiques. El permiso sobre `agenda\_facil\_test\_%` es necesario porque las pruebas crean una base temporal `agenda_facil_test_<marca>_<pid>` en cada ejecución:
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_test; CREATE USER 'agenda'@'localhost' IDENTIFIED BY 'agenda_local_dev'; GRANT ALL ON agenda_facil.* TO 'agenda'@'localhost'; GRANT ALL ON agenda_facil_test.* TO 'agenda'@'localhost'; GRANT ALL ON \`agenda\\_facil\\_test\\_%\`.* TO 'agenda'@'localhost'; GRANT CREATE ON *.* TO 'agenda'@'localhost';"
+mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_test; CREATE USER 'agenda'@'localhost' IDENTIFIED BY '<CLAVE_LOCAL>'; GRANT ALL ON agenda_facil.* TO 'agenda'@'localhost'; GRANT ALL ON agenda_facil_test.* TO 'agenda'@'localhost'; GRANT ALL ON \`agenda\\_facil\\_test\\_%\`.* TO 'agenda'@'localhost'; GRANT CREATE ON *.* TO 'agenda'@'localhost';"
 ```
 
 3. Configurar variables de entorno:
@@ -176,7 +176,13 @@ mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_
 cp backend/.env.example backend/.env
 ```
 
-Edita `backend/.env` (`DATABASE_URL`, `JWT_SECRET`). Ajusta también `backend/.env.test` si tu usuario/clave difieren.
+Edita `backend/.env` (`DATABASE_URL`, `JWT_SECRET`). Para las pruebas, crea `backend/.env.test.local` (ignorado por Git; nunca lo subas) con tu contraseña real:
+
+```bash
+DATABASE_URL="mysql://agenda:<CLAVE_LOCAL>@127.0.0.1:3306/agenda_facil_test"
+```
+
+Ese archivo tiene prioridad sobre `backend/.env.test`, que está versionado y solo contiene el marcador `CLAVE_LOCAL` y la configuración de pruebas compartida (las variables definidas en el sistema o en CI tienen prioridad sobre ambos). Si la contraseña contiene caracteres especiales, codifícalos para URL (p. ej. `@` → `%40`). Un error `P1000` al ejecutar las pruebas indica que la contraseña de `.env.test.local` no coincide con la de MySQL.
 
 4. Migraciones y datos de referencia (planes):
 

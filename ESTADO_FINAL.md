@@ -16,7 +16,7 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 | Scripts de despliegue y rollback de EC2 | Simulación local de 5 escenarios (`docs/evidencias/simulacion-despliegue-ec2.md`) |
 | Plantilla CloudFormation | cfn-lint: 0 errores (1 advertencia documentada) |
 | Workflows de GitHub Actions | actionlint: 0 hallazgos; comandos de CI ejecutados en clon limpio |
-| Auditoría técnica | `AUDITORIA_TECNICA.md`: 15 hallazgos, 12 corregidos y verificados, 3 aceptados/pendientes justificados |
+| Auditoría técnica | `AUDITORIA_TECNICA.md`: 15 hallazgos, 13 corregidos y verificados, 2 aceptados/pendientes justificados |
 | Documentación | README, guías Git/AWS, arquitectura, diagramas, documento APA (DOCX/PDF) regenerado y contrastado con el código |
 | Material de sustentación | `SUSTENTACION/` (presentación, React, backend, AWS, CI/CD, 38 preguntas, guion de demo) |
 | Secretos | Escaneo de todo el historial Git: sin credenciales reales |
