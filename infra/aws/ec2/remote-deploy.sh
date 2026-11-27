@@ -28,7 +28,7 @@ chown -R agenda:agenda "$RELEASE"
 # Si algo falla ANTES de activar la release (npm, Prisma, migraciones), se elimina la carpeta
 # incompleta para que nunca pueda elegirse como destino de un rollback.
 ACTIVATED=false
-# shellcheck disable=SC2317  # se invoca mediante trap
+# shellcheck disable=SC2317,SC2329  # se invoca mediante trap EXIT (ShellCheck no lo detecta)
 cleanup_failed_release() {
   if [ "$ACTIVATED" = false ] && [ -d "$RELEASE" ]; then
     echo "ERROR: el despliegue falló antes de activarse. Se descarta $RELEASE (la versión en producción no cambió)."
