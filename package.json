@@ -1,0 +1,19 @@
+{
+  "name": "agenda-facil",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agenda Fácil — plataforma SaaS de gestión de citas y reservas (monorepo: backend + frontend)",
+  "license": "MIT",
+  "scripts": {
+    "install:all": "npm ci --prefix backend && npm ci --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "e2e": "node e2e/mvp-flow.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

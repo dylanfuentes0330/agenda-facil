@@ -1,0 +1,33 @@
+# Dependencias y builds
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Variables de entorno y secretos (NUNCA subir credenciales)
+.env
+.env.*
+!.env.example
+!backend/.env.test
+*.pem
+*.key
+credentials
+credentials.json
+
+# Archivos subidos en desarrollo y pruebas
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/tests/.uploads/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log
+npm-debug.log*
+
+# Artefactos de despliegue locales
+*.tar.gz
+infra/aws/outputs.json
