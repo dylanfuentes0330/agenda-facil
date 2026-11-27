@@ -1,5 +1,5 @@
-# Resultado prueba E2E (2026-11-27T01:17:07.296Z)
-Base URL: http://localhost:4173 · Ejecución: mwyajqjk
+# Resultado prueba E2E (2026-11-27T01:28:46.777Z)
+Base URL: http://localhost:4173 · Ejecución: mwyayr28
 
 - [x] Landing page carga con planes desde la API
 - [x] Registro de negocio y redirección al panel

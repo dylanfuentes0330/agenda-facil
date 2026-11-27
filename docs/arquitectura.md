@@ -55,6 +55,8 @@ exposición pública, S3 privado, HTTPS) y la estimación de costos (presentada 
 | D10 | Planes sin pasarela de pago | Integrar pagos simulados | Requisito: no simular cobros; solo límites funcionales reales |
 | D11 | CloudFormation sin recursos IAM, con `LabInstanceProfile` | Terraform, creación manual | Learner Lab no permite crear roles; plantilla reproducible y validable (`cfn-lint`) |
 | D12 | Despliegue por releases + enlace simbólico + health check | `git pull` en el servidor | Permite rollback inmediato y automático |
+| D14 | Tope de 5 reservas futuras por cliente y negocio | Sin límite; captcha | Evita que un cliente bloquee la agenda; el negocio no tiene tope |
+| D15 | Releases marcadas `.deploy-ok` como único destino de rollback | Elegir la carpeta anterior por nombre | La auditoría demostró que elegir por nombre podía activar un despliegue incompleto |
 | D13 | Pruebas con base de datos temporal por ejecución | `migrate reset` sobre una BD fija | Nunca borra datos existentes; Prisma bloquea `reset` ejecutado por agentes de IA sin consentimiento |
 
 ## 3. Vistas de arquitectura
@@ -89,7 +91,9 @@ transacción al crear o mover una reserva.
 | Acceso no autorizado | JWT con `iss`/`aud`/expiración; usuario recargado de BD en cada petición | Pruebas 401 |
 | Escalada de privilegios | `requireRole` por grupo de rutas | Pruebas 403 |
 | Fuga entre negocios (multi-tenant) | `businessId` del token, filtros `businessId` en todas las consultas → 404 | `tests/api/isolation.test.js` |
-| Cabeceras inseguras | helmet (CSP, nosniff, HSTS…), `x-powered-by` deshabilitado | Prueba de cabeceras |
+| Cabeceras inseguras | helmet en la API (CSP, nosniff, HSTS…), `x-powered-by` deshabilitado; `Managed-SecurityHeadersPolicy` de CloudFront para el frontend | Prueba de cabeceras |
+| Abuso de reservas | Máximo 5 reservas futuras por cliente y negocio | Prueba con verificación de mutación |
+| Secreto JWT débil en producción | El servidor no arranca con secretos de ejemplo o cortos | Prueba unitaria |
 | CORS | Lista blanca por variable `CORS_ORIGINS` | Prueba de CORS |
 | Secretos | `.env` ignorado; GitHub Secrets; `NoEcho` en CloudFormation | `.gitignore`, workflows |
 | Transporte | HTTPS en CloudFront (`redirect-to-https`/`https-only`, TLS 1.2+ con dominio propio); S3 deniega HTTP | Plantilla |
@@ -105,11 +109,12 @@ token en `localStorage` (mitigado con expiración corta); permisos amplios de `L
 | Elemento | Diseñado | Desarrollado | Probado | Desplegado en AWS |
 |---|---|---|---|---|
 | Frontend React | Sí | Sí | Sí (componentes + E2E local) | No |
-| API REST | Sí | Sí | Sí (46 pruebas + Newman) | No |
+| API REST | Sí | Sí | Sí (48 pruebas + Newman) | No |
 | Modelo de datos y migraciones | Sí | Sí | Sí (MySQL 8 local) | No |
 | Prevención de doble reserva | Sí | Sí | Sí (10 peticiones concurrentes) | No |
-| CI (GitHub Actions) | Sí | Sí | Comandos ejecutados localmente; workflow sin ejecutar en GitHub | — |
-| CD (deploy.yml) | Sí | Sí | No (requiere AWS) | No |
+| CI (GitHub Actions) | Sí | Sí | Comandos ejecutados en clon limpio; actionlint sin hallazgos; sin ejecutar en GitHub | — |
+| Scripts de despliegue y rollback | Sí | Sí | Simulación local de 5 escenarios | No |
+| CD (deploy.yml) | Sí | Sí | actionlint; script remoto simulado | No |
 | CloudFormation (VPC, EC2, RDS, S3, CloudFront, Route 53) | Sí | Sí | Validada con `cfn-lint` (0 errores) | No |
 | Dominio personalizado | Sí | Configuración preparada | No | No |
 | Rol IAM de mínimo privilegio | Sí | Políticas JSON | No | No aplicable en Learner Lab |

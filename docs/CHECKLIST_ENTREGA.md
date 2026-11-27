@@ -25,7 +25,7 @@ Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 | Tarea | Estado | Evidencia |
 |---|---|---|
 | 10 áreas del frontend, responsive, en español, sin botones decorativos | COMPLETADO | `frontend/src/pages`, E2E 18/18 |
-| API REST completa con roles, validación, errores, CORS, rate limit | COMPLETADO | `backend/src`, 46 pruebas |
+| API REST completa con roles, validación, errores, CORS, rate limit | COMPLETADO | `backend/src`, 48 pruebas |
 | Modelo de datos, migraciones, seed de planes, datos DEMO opcionales | COMPLETADO | `backend/prisma` |
 | Prevención de doble reserva (transacción + bloqueo) | COMPLETADO | prueba de concurrencia + prueba de mutación |
 | Aislamiento multi-tenant | COMPLETADO | `backend/tests/api/isolation.test.js` |
@@ -67,7 +67,7 @@ Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 ## 11. Pruebas
 | Tarea | Estado | Evidencia |
 |---|---|---|
-| Backend 46/46, frontend 10/10, E2E 18/18, Newman 55/55 | COMPLETADO | `docs/evidencias/` |
+| Backend 48/48, frontend 10/10, E2E 18/18, Newman 55/55 | COMPLETADO | `docs/evidencias/` |
 | Diseño responsive verificado (móvil, tablet, escritorio) | COMPLETADO | E2E sin desbordamiento + capturas |
 | Colección Postman | COMPLETADO | `docs/postman/` |
 | Pruebas sobre el entorno desplegado | PENDIENTE (Equipo) | Ejecutar Newman con el entorno de producción |
@@ -92,3 +92,15 @@ Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 4. Cargar secretos/variables en GitHub y activar `AWS_DEPLOY_ENABLED`.
 5. Adquirir/conectar el dominio y emitir el certificado ACM.
 6. Tomar las capturas reales, completar portada e integrantes, verificar referencias y regenerar el documento.
+
+## Actualización tras la auditoría técnica final (2026-11-27)
+| Tarea | Estado | Evidencia |
+|---|---|---|
+| Auditoría técnica completa (código, pruebas, infraestructura, documentación, secretos) | COMPLETADA Y VERIFICADA | `AUDITORIA_TECNICA.md` |
+| Corrección de hallazgos (rollback, despliegue, secreto JWT, anti-abuso, CI, CloudFront, README, documento) | COMPLETADA Y VERIFICADA | Rama `fix/auditoria-final`; `docs/evidencias/reejecucion-auditoria.txt` |
+| Simulación del despliegue en EC2 (5 escenarios) | COMPLETADA Y VERIFICADA | `docs/evidencias/simulacion-despliegue-ec2.md` |
+| Validación de workflows con actionlint | COMPLETADA Y VERIFICADA | 0 hallazgos |
+| Material de sustentación | COMPLETADA Y VERIFICADA | `SUSTENTACION/` |
+| Matriz de rúbrica (sin rúbrica oficial) | COMPLETADA Y VERIFICADA | `docs/matriz-cumplimiento.md` |
+| PR `fix/auditoria-final → develop` y ejecución real de CI | PENDIENTE DE ACCESO | Ver `ESTADO_FINAL.md` P1 |
+| Estado consolidado y acciones del equipo | COMPLETADA Y VERIFICADA | `ESTADO_FINAL.md` |

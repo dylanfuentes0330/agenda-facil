@@ -8,13 +8,15 @@ deben presentarse como tales, no como evidencia de AWS.
 
 | Evidencia | Archivo |
 |---|---|
-| Resultado de pruebas backend (46/46) | `docs/evidencias/resultado-pruebas-backend.txt` |
+| Resultado de pruebas backend (48/48) | `docs/evidencias/resultado-pruebas-backend.txt` |
 | Resultado de pruebas frontend (10/10) | `docs/evidencias/resultado-pruebas-frontend.txt` |
 | Prueba E2E en navegador (18/18 pasos) | `docs/evidencias/resultado-e2e.md` |
 | Colección Postman ejecutada con Newman (42 peticiones, 55 aserciones) | `docs/evidencias/resultado-newman.txt` |
 | Rate limiting bloqueando una segunda ejecución inmediata | `docs/evidencias/rate-limit-segunda-ejecucion-newman.txt` |
 | Prueba de que el test de concurrencia detecta dobles reservas | `docs/evidencias/prueba-mutacion-concurrencia.md` |
 | Validación de la plantilla CloudFormation (`cfn-lint`) | `docs/evidencias/validaciones-infraestructura.txt` |
+| Re-ejecución completa de la auditoría (clon limpio, infraestructura, E2E, Newman) | `docs/evidencias/reejecucion-auditoria.txt` |
+| Simulación del despliegue en EC2 con rollback (5 escenarios) | `docs/evidencias/simulacion-despliegue-ec2.md` |
 | 17 capturas de la aplicación (escritorio, tablet, móvil) | `docs/capturas/*.png` |
 
 ## Pendientes — las debe tomar el equipo
