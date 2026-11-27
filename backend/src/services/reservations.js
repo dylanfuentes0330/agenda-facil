@@ -9,6 +9,9 @@ export const reservationInclude = {
   client: { select: { id: true, name: true, phone: true, email: true } },
 };
 
+/** Máximo de reservas futuras confirmadas que un cliente puede tener a la vez en un mismo negocio (anti-abuso). */
+export const MAX_ACTIVE_RESERVATIONS_PER_CLIENT = 5;
+
 const TX_OPTIONS = {
   isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
   maxWait: 10_000,
@@ -64,14 +67,28 @@ async function getActiveService(tx, businessId, serviceId) {
   return service;
 }
 
-/** Crea una reserva con validación de reglas y control de concurrencia. */
-export async function createReservation({ business, serviceId, startAt, notes, resolveClient, enforceGrid }) {
+/**
+ * Crea una reserva con validación de reglas y control de concurrencia.
+ * limitActive=true (reservas en línea de clientes) aplica el tope de reservas futuras por cliente.
+ */
+export async function createReservation({ business, serviceId, startAt, notes, resolveClient, enforceGrid, limitActive = false }) {
   return prisma.$transaction(async (tx) => {
     await lockBusiness(tx, business.id);
     const service = await getActiveService(tx, business.id, serviceId);
     const slot = await validateSlot(tx, { business, service, startAtText: startAt, enforceGrid });
     await assertNoOverlap(tx, { businessId: business.id, ...slot });
     const clientId = await resolveClient(tx);
+    if (limitActive) {
+      const active = await tx.reservation.count({
+        where: { businessId: business.id, clientId, status: 'CONFIRMED', startAt: { gt: nowInZone(business.timezone) } },
+      });
+      if (active >= MAX_ACTIVE_RESERVATIONS_PER_CLIENT) {
+        throw unprocessable(
+          'TOO_MANY_ACTIVE_RESERVATIONS',
+          `Ya tienes ${MAX_ACTIVE_RESERVATIONS_PER_CLIENT} reservas próximas en este negocio. Cancela alguna o espera a que se realicen para reservar otra.`,
+        );
+      }
+    }
     return tx.reservation.create({
       data: {
         businessId: business.id,

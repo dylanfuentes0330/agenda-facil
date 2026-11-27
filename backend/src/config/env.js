@@ -10,9 +10,16 @@ function required(name) {
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 const jwtSecret = required('JWT_SECRET');
-if (nodeEnv === 'production' && jwtSecret.length < 32) {
-  throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción');
+// Valores de ejemplo/prueba conocidos públicamente: nunca deben usarse en producción.
+const INSECURE_SECRET = /CAMBIAR|change-me|local-dev|test-secret|ci-only|ejemplo|example/i;
+export function assertProductionSecret(secret, isProduction) {
+  if (!isProduction) return;
+  if (secret.length < 32) throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción');
+  if (INSECURE_SECRET.test(secret)) {
+    throw new Error('JWT_SECRET parece un valor de ejemplo o de pruebas. Genera uno aleatorio para producción.');
+  }
 }
+assertProductionSecret(jwtSecret, nodeEnv === 'production');
 
 export const env = {
   nodeEnv,
