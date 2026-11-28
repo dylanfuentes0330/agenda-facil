@@ -2,12 +2,12 @@
 
 **Plataforma SaaS de gestión de citas y reservas en la nube para pequeños y medianos negocios**: barberías, peluquerías, salones de belleza, consultorios, estudios de tatuajes y centros de estética.
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
-<!-- Reemplazar OWNER/REPO por el usuario/organización y el nombre del repositorio en GitHub -->
+[![CI](https://github.com/dylanfuentes0330/agenda-facil/actions/workflows/ci.yml/badge.svg)](https://github.com/dylanfuentes0330/agenda-facil/actions/workflows/ci.yml)
 
-> Proyecto universitario. Estado actual: aplicación funcional y probada en entorno local; infraestructura AWS
-> preparada (CloudFormation + scripts + CI/CD) y **pendiente de desplegar** desde la cuenta AWS Academy del equipo.
-> Ver [Estado del proyecto](#estado-del-proyecto).
+> Proyecto universitario. **Desplegado en AWS Academy Learner Lab: <https://52-54-96-26.sslip.io>** (EC2 + Nginx +
+> Node.js, RDS MySQL 8.4 privada, S3 privado, HTTPS con Let's Encrypt). Verificado en producción con el E2E completo
+> (18/18) — ver [docs/evidencias/despliegue-aws.md](docs/evidencias/despliegue-aws.md). La URL solo responde mientras
+> la sesión del Learner Lab está iniciada. Ver [Estado del proyecto](#estado-del-proyecto).
 
 ---
 
@@ -99,6 +99,10 @@ disponibilidad y reservan en línea. El sistema **impide reservas incompatibles*
 ## Arquitectura
 
 ![Arquitectura AWS](docs/diagramas/01-arquitectura-aws.png)
+
+> **Despliegue real:** el Learner Lab del equipo **bloquea CloudFront**, así que se desplegó con `EnableCloudFront=false`:
+> Nginx en EC2 sirve el frontend y `/api/*` en el mismo dominio con HTTPS de Let's Encrypt; el resto (VPC, RDS privada,
+> S3 privado, IAM) es igual. La arquitectura con CloudFront sigue disponible en la plantilla (`EnableCloudFront=true`).
 
 - **CloudFront** es la única puerta de entrada HTTPS: sirve el frontend desde un bucket **S3 privado** (Origin Access Control)
   y enruta `/api/*` hacia **EC2** (Nginx → Node.js). Frontend y API comparten dominio, por lo que no hay problemas de CORS ni de cookies de terceros.
@@ -248,7 +252,7 @@ día y negocio, cliente único por correo y negocio, índices `(business_id, sta
 
 | Tipo | Comando | Resultado verificado (27-nov-2026, local; reverificado en la auditoría) |
 |---|---|---|
-| Backend: unitarias + API (MySQL real) | `npm test --prefix backend` | **48/48** |
+| Backend: unitarias + API (MySQL real) | `npm test --prefix backend` | **50/50** |
 | Frontend: utilidades y componentes | `npm test --prefix frontend` | **10/10** |
 | E2E en navegador (flujo MVP + responsive) | `npm run e2e` (con la app levantada) | **18/18 pasos** |
 | Colección Postman (Newman) | `npx newman run docs/postman/Agenda-Facil.postman_collection.json -e docs/postman/Agenda-Facil-local.postman_environment.json` | **42 peticiones, 55 aserciones, 0 fallos** |
@@ -293,7 +297,7 @@ Colección lista para importar: [`docs/postman`](docs/postman).
 | Workflow | Disparador | Etapas |
 |---|---|---|
 | [`ci.yml`](.github/workflows/ci.yml) | PR y push a `develop`/`main` | Backend: `npm ci` → lint → build → pruebas con MySQL 8 (servicio). Frontend: `npm ci` → lint → pruebas → build (artefacto). Infraestructura: cfn-lint, ShellCheck, actionlint. E2E: Playwright del flujo MVP (artefacto con capturas). |
-| [`deploy.yml`](.github/workflows/deploy.yml) | CI exitoso en `main`, o manual con `ref` | Backend → EC2 por SSH (release nueva, migraciones, health check, **rollback automático**). Frontend → S3 + invalidación de CloudFront. Solo si la variable `AWS_DEPLOY_ENABLED` = `true`. |
+| [`deploy.yml`](.github/workflows/deploy.yml) | CI exitoso en `main`, o manual con `ref` | Backend → EC2 por SSH (release nueva, migraciones, health check, **rollback automático**). Frontend → S3 + invalidación de CloudFront, o a la propia EC2 por SSH si no hay CloudFront. Requiere aprobación del entorno `production` y la variable `AWS_DEPLOY_ENABLED` = `true`. |
 
 **Rollback**: (1) automático si el health check falla tras desplegar; (2) `Actions → Deploy → Run workflow` con el
 commit/tag anterior en `ref`; (3) en el servidor: `sudo bash /tmp/agenda-deploy/infra/aws/ec2/rollback.sh` (solo considera
@@ -301,8 +305,9 @@ releases marcadas como sanas con `.deploy-ok`). Ensayado localmente: ver `docs/e
 Secretos y variables necesarios: ver encabezado de [`deploy.yml`](.github/workflows/deploy.yml) y
 [docs/guia-aws-academy.md](docs/guia-aws-academy.md).
 
-> Los workflows **aún no se han ejecutado en GitHub** (el repositorio remoto no existe todavía). Sus comandos se
-> ejecutaron localmente con éxito; la primera ejecución real ocurrirá al hacer push.
+> CI se ejecuta en GitHub en cada PR y push a `develop`/`main` (4 jobs en verde). `main` está protegida (PR obligatorio
+> + checks de CI). El primer Deploy real desplegó el backend y el frontend en AWS (ver
+> [evidencias](docs/evidencias/despliegue-aws.md#4-despliegue-con-github-actions)).
 
 ## Despliegue en AWS Academy
 
@@ -316,16 +321,21 @@ bash infra/aws/scripts/00-verificar-servicios.sh
 export DB_MASTER_PASSWORD='UnaClaveSegura_2026' && bash infra/aws/scripts/01-desplegar-infraestructura.sh
 ```
 
+Si CloudFront está bloqueado en el laboratorio (caso real de este proyecto), usar `ENABLE_CLOUDFRONT=false` y después
+`infra/aws/ec2/configurar-https.sh` en la instancia (guía §8).
+
 Luego: crear el usuario de aplicación en RDS desde EC2 (`infra/aws/ec2/crear-usuario-app.sql`), cargar secretos y
 variables en GitHub, activar `AWS_DEPLOY_ENABLED=true` y hacer push a `main`. Para ahorrar créditos:
 `bash infra/aws/scripts/99-eliminar-infraestructura.sh`.
 
 ## Dominio personalizado
 
-Sin dominio, la app queda accesible por HTTPS en `https://dxxxxxxxx.cloudfront.net`. Para un dominio propio
+Sin dominio, la app queda accesible por HTTPS en `https://dxxxxxxxx.cloudfront.net` o, sin CloudFront, en
+`https://<ip-con-guiones>.sslip.io` (actual: <https://52-54-96-26.sslip.io>). Con un dominio propio sin CloudFront basta
+un registro A hacia la IP elástica y `configurar-https.sh tu-dominio`. Para un dominio propio
 (registrado fuera de AWS Academy, que no permite registrar dominios): certificado ACM en `us-east-1` validado por DNS →
 parámetros `DomainName`, `AcmCertificateArn` y (si se usa Route 53) `HostedZoneId` en el stack. Detalle en la guía.
-**El dominio aún no existe**: ninguna URL de producción de este README está activa.
+**No hay dominio propio**: la URL pública usa el servicio DNS gratuito `sslip.io`.
 
 ## Capturas de pantalla
 
@@ -370,9 +380,10 @@ buckets S3 privados con OAC · IMDSv2 · usuario de BD de aplicación con privil
 | Backend API REST + reglas de negocio | ✅ Desarrollado y probado localmente (MySQL 8) |
 | Base de datos (modelo, migraciones, seed) | ✅ Desarrollado |
 | Pruebas (unitarias, API, componentes, E2E, Postman) | ✅ Ejecutadas con éxito en local |
-| Workflows CI/CD | 🟡 Configurados y validados con actionlint; pendiente primera ejecución en GitHub |
-| Infraestructura AWS (CloudFormation, scripts) | 🟡 Validada con `cfn-lint`; scripts de despliegue/rollback ensayados en simulación local; **no desplegada** |
-| Dominio personalizado | ⏳ Pendiente (el equipo debe adquirir/conectar un dominio) |
+| Workflows CI/CD | ✅ CI en verde en GitHub; Deploy ejecutado (backend y frontend publicados en AWS) |
+| Infraestructura AWS (CloudFormation, scripts) | ✅ Desplegada en Learner Lab (`CREATE_COMPLETE`, modo sin CloudFront por bloqueo del laboratorio) |
+| Aplicación en producción | ✅ <https://52-54-96-26.sslip.io> — E2E 18/18 y verificación técnica 11/11 contra la URL pública |
+| Dominio personalizado | ⏳ Sin dominio propio (se usa `sslip.io`); pasos documentados para conectar uno |
 | Pasarela de pagos | ❌ Fuera de alcance del MVP (planes sin cobro) |
 | Múltiples usuarios por negocio (Plan Profesional) | ❌ Mejora futura |
 
