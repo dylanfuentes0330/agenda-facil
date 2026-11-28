@@ -12,5 +12,5 @@ indent = ' ' * 10
 block = '\n'.join((indent + line) if line else '' for line in script.split('\n')).lstrip()
 out = src.replace('__BOOTSTRAP__', block)
 header = '# ARCHIVO GENERADO por build-template.py a partir de agenda-facil.src.yaml y ../ec2/bootstrap-ec2.sh. No editar a mano.\n'
-(here / 'agenda-facil.yaml').write_text(header + out, encoding='utf-8')
+(here / 'agenda-facil.yaml').write_text(header + out, encoding='utf-8', newline='\n')  # LF también en Windows
 print('agenda-facil.yaml generado')

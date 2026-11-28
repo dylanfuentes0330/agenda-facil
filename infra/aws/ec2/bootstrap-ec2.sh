@@ -53,9 +53,21 @@ ProtectHome=true
 WantedBy=multi-user.target
 UNIT
 
+install -d -o agenda -g agenda "$APP_DIR/frontend-releases"
+
+# Oculta la versión de Nginx en todos los server (incluido el de redirección que crea certbot)
+echo 'server_tokens off;' > /etc/nginx/conf.d/00-seguridad.conf
+
 cat > /etc/nginx/conf.d/agenda-facil.conf <<'NGINX'
-# Nginx como proxy inverso: recibe tráfico de CloudFront en el puerto 80 y lo
-# reenvía a Node.js (127.0.0.1:3000). Solo expone /api/; el frontend se sirve desde S3.
+# Nginx como proxy inverso de la API (127.0.0.1:3000) y servidor del frontend compilado.
+# - Con CloudFront: el puerto 80 solo recibe /api/* desde CloudFront; el frontend sale de S3.
+# - Sin CloudFront (EnableCloudFront=false): sirve también la SPA desde /opt/agenda-facil/frontend
+#   (publicada por remote-frontend.sh); configurar-https.sh añade el certificado de Let's Encrypt.
+map $http_x_forwarded_proto $agenda_forwarded_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -69,12 +81,29 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Proto $agenda_forwarded_proto;
         proxy_read_timeout 30s;
     }
 
+    # Frontend (SPA de React). Si no se ha publicado en EC2, responde 404.
+    root /opt/agenda-facil/frontend;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location /assets/ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+
     location / {
-        return 404;
+        try_files $uri /index.html =404;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
     }
 }
 NGINX
