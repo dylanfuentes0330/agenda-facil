@@ -53,7 +53,7 @@ Fecha de corte: 2026-11-28. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 |---|---|---|
 | Workflow CI (lint, pruebas, build, E2E) | PARCIAL | `ci.yml`; comandos ejecutados en clon limpio; sin ejecución en GitHub aún |
 | Workflow Deploy con secretos, condiciones y rollback | COMPLETADO | Ejecutado contra AWS con entorno `production` protegido; ver `docs/evidencias/despliegue-aws.md` §4 |
-| Evidencia de pipeline en verde | PARCIAL | CI en verde en GitHub (enlaces en `docs/evidencias/despliegue-aws.md`); falta la captura de pantalla |
+| Evidencia de pipeline en verde | PARCIAL | CI y Deploy #3 en verde en GitHub (enlaces en `docs/evidencias/despliegue-aws.md`); falta la captura de pantalla |
 
 ## 9–10. AWS Academy y dominio
 | Tarea | Estado | Evidencia |

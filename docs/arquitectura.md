@@ -114,7 +114,7 @@ token en `localStorage` (mitigado con expiración corta); permisos amplios de `L
 | Prevención de doble reserva | Sí | Sí | Sí (10 peticiones concurrentes; E2E en producción) | Sí |
 | CI (GitHub Actions) | Sí | Sí | Ejecutado en GitHub en cada PR/push (4 jobs en verde) | — |
 | Scripts de despliegue y rollback | Sí | Sí | Simulación local + despliegue real en EC2 | Sí |
-| CD (deploy.yml) | Sí | Sí | Ejecutado: backend correcto; frontend publicado (comprobación final corregida) | Sí |
+| CD (deploy.yml) | Sí | Sí | Ejecutado en GitHub: Deploy #3 en verde (3/3 jobs) | Sí |
 | CloudFormation (VPC, EC2, RDS, S3, CloudFront, Route 53) | Sí | Sí | `cfn-lint` + `CREATE_COMPLETE` | Sí, con `EnableCloudFront=false` (CloudFront bloqueado en el Learner Lab) |
 | Dominio personalizado | Sí | Configuración preparada | No | No (URL `sslip.io` con HTTPS de Let's Encrypt) |
 | Rol IAM de mínimo privilegio | Sí | Políticas JSON | No | No aplicable en Learner Lab |
