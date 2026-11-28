@@ -19,7 +19,7 @@ re-ejecutó o se revisó contra el código. Las correcciones están en la rama `
 |---|---|---|
 | Frontend React 19 + Vite y backend Node 22 + Express existen | Inspección de `frontend/`, `backend/`, `package.json` | **Confirmado** |
 | Prisma + MySQL 8 con migraciones | `prisma/schema.prisma`, migración `20261127002845_init`, `migrate deploy` en BD vacía (simulación) | **Confirmado** |
-| Backend 46/46 | Re-ejecutado | **Confirmado** (ahora 48/48 tras añadir 2 pruebas) |
+| Backend 46/46 | Re-ejecutado | **Confirmado** (48/48 tras la auditoría; 50/50 tras H-16) |
 | Frontend 10/10 | Re-ejecutado | **Confirmado** |
 | Playwright 18/18 | Re-ejecutado dos veces (antes y después de correcciones) | **Confirmado** |
 | Newman 42 peticiones / 55 aserciones | Re-ejecutado | **Confirmado** |
@@ -50,6 +50,8 @@ Severidad: **Crítica** (impide la entrega/operación) · **Alta** · **Media** 
 | H-13 | Baja | Referencias | Los enlaces de las referencias no pudieron abrirse desde este entorno (red restringida). | Intento de verificación | Sin cambio posible aquí | **Pendiente (equipo)** |
 | H-14 | Info | `.env.test` | Contenía una contraseña de base de datos **local de pruebas**. Ahora el archivo versionado solo tiene el marcador `CLAVE_LOCAL`; la credencial real de cada desarrollador va en `backend/.env.test.local` (ignorado por Git), que las pruebas cargan con prioridad. CI usa su propio contenedor efímero vía variable de entorno. | Escaneo de secretos | Credencial movida a archivo local ignorado; `tests/global-setup.js` avisa si se usa el marcador | Corregido |
 | H-15 | Info | Nginx | `nginx -t` valida la sintaxis; el único error es `listen [::]:80` porque este contenedor no tiene IPv6 (AL2023 sí). | `nginx -t` | Ninguna | Aceptado |
+| H-16 | Alta | Validación (Zod 3) | GHSA-mrhx-c7xc-m3w5: Zod < 4.6.6 valida cada elemento de colecciones con restricción de tamaño aunque la longitud ya sea inválida. `PUT /api/business/hours` con un array de ~30 000 filas (< 100 KB) generaba ~120 000 errores y una respuesta de varios MB (amplificación de CPU/memoria). La única corrección de npm es Zod 4 (cambio mayor). | `npm audit`; prueba con 30 000 filas | Se valida primero la longitud exacta (`z.array(z.unknown()).length(7).pipe(...)`) y el manejador de errores devuelve como máximo 20 detalles. 2 pruebas nuevas (respuesta < 2 KB). Zod se mantiene en 3.25.76 (es el único array de entrada de la API) | Mitigado y probado |
+| H-17 | Media | Dependencias | `npm audit` del backend: `prisma` 6.19.3 (CLI, vía `@prisma/config` → `deepmerge-ts`, `effect`) y `vitest` 3.2 (`tinypool`, `@vitest/mocker`). Solo se corrigen con Prisma 7 / Vitest 5 (cambios mayores). Prisma CLI solo procesa la configuración del propio repositorio en `migrate deploy` (no recibe entrada de usuarios); Vitest es de desarrollo y no se instala con `--omit=dev`. Frontend: `npm audit --omit=dev` = 0 vulnerabilidades. | `npm audit`, `npm audit --omit=dev` | No se actualizan versiones mayores sin una migración planificada (Prisma 7 exige `prisma.config.ts` y adaptadores) | Aceptado y documentado |
 
 ## 4. Revisión por área (lo que se verificó y está correcto)
 
@@ -89,7 +91,7 @@ Severidad: **Crítica** (impide la entrega/operación) · **Alta** · **Media** 
 | Componente | Diseñado | Desarrollado | Probado | Desplegado |
 |---|---|---|---|---|
 | Frontend | Sí | Sí | Sí (local) | No |
-| Backend / API | Sí | Sí | Sí (local, 48 pruebas) | No |
+| Backend / API | Sí | Sí | Sí (local, 50 pruebas) | No |
 | Base de datos | Sí | Sí | Sí (MySQL 8 local) | No |
 | Scripts de despliegue y rollback | Sí | Sí | Simulación local (5/5) | No |
 | CloudFormation | Sí | Sí | Validación estática | No |

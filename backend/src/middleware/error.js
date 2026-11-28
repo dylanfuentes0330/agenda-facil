@@ -2,6 +2,9 @@ import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { AppError } from '../lib/errors.js';
 
+/** Máximo de errores de validación que se devuelven: evita respuestas enormes ante entradas abusivas. */
+export const MAX_VALIDATION_DETAILS = 20;
+
 export function notFoundHandler(req, res) {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: `Ruta no encontrada: ${req.method} ${req.originalUrl}` } });
 }
@@ -12,7 +15,7 @@ export function errorHandler(err, req, res, _next) {
       error: {
         code: 'VALIDATION_ERROR',
         message: err.issues[0]?.message || 'Datos inválidos',
-        details: err.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
+        details: err.issues.slice(0, MAX_VALIDATION_DETAILS).map((i) => ({ field: i.path.join('.'), message: i.message })),
       },
     });
   }

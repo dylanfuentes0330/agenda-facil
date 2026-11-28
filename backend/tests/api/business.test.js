@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { api, auth, createService, registerBusiness, registerClient } from '../helpers.js';
+import { MAX_VALIDATION_DETAILS } from '../../src/middleware/error.js';
+import { hoursSchema } from '../../src/validators/schemas.js';
 
 const week = (overrides = {}) =>
   [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, isOpen: d !== 0, openTime: '08:00', closeTime: '17:00', ...(overrides[d] || {}) }));
@@ -64,6 +66,42 @@ describe('Horarios y configuración', () => {
     expect(bad.status).toBe(400);
     const incomplete = await api().put('/api/business/hours').set(auth(token)).send({ hours: week().slice(0, 5) });
     expect(incomplete.status).toBe(400);
+  });
+
+  it('rechaza arrays de horarios enormes con un error breve (anti-amplificación)', async () => {
+    const { token } = await registerBusiness();
+    // ~90 KB: por debajo del límite de 100 KB de express.json, así que llega a la validación.
+    const huge = { hours: Array.from({ length: 30_000 }, () => ({})) };
+    expect(JSON.stringify(huge).length).toBeLessThan(100 * 1024);
+    const res = await api().put('/api/business/hours').set(auth(token)).send(huge);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.message).toBe('Debes enviar los 7 días de la semana');
+    expect(res.body.error.details.length).toBeLessThanOrEqual(MAX_VALIDATION_DETAILS);
+    expect(res.text.length).toBeLessThan(2 * 1024);
+    // El esquema corta antes de validar cada fila: errores constantes (longitud + días únicos), no uno por elemento
+    const issues = hoursSchema.safeParse(huge).error.issues;
+    expect(issues.length).toBeLessThanOrEqual(2);
+    expect(issues[0].message).toBe('Debes enviar los 7 días de la semana');
+    // Los datos válidos siguen aceptándose después del intento
+    const ok = await api().put('/api/business/hours').set(auth(token)).send({ hours: week() });
+    expect(ok.status).toBe(200);
+    expect(ok.body.hours).toHaveLength(7);
+  });
+
+  it('los 7 días mal formados siguen fallando y devuelven como máximo 20 errores', async () => {
+    const { token } = await registerBusiness();
+    // 7 filas vacías → 4 errores por fila (28 en total), recortados a MAX_VALIDATION_DETAILS
+    const res = await api().put('/api/business/hours').set(auth(token)).send({ hours: Array.from({ length: 7 }, () => ({})) });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.details).toHaveLength(MAX_VALIDATION_DETAILS);
+    expect(res.body.error.details[0].field).toMatch(/^hours\.0\./);
+    expect(res.text.length).toBeLessThan(4 * 1024);
+    // Un horario inválido dentro de una semana completa sigue señalando el campo concreto
+    const bad = await api().put('/api/business/hours').set(auth(token)).send({ hours: week({ 3: { openTime: '25:00' } }) });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.details.some((d) => d.field === 'hours.3.openTime')).toBe(true);
   });
 
   it('actualiza perfil y configuración del negocio', async () => {
