@@ -19,15 +19,18 @@
 #   secretos DEL ENTORNO (no del repositorio), para que solo estén disponibles tras la aprobación.
 #
 # Secretos requeridos (Settings → Secrets and variables → Actions → Secrets):
-#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN  → credenciales TEMPORALES del
-#       Learner Lab (botón "AWS Details"). Caducan al terminar la sesión: actualizarlas antes de desplegar.
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN  → SOLO en modo CloudFront: credenciales
+#       TEMPORALES del Learner Lab ("AWS Details"). Caducan al terminar la sesión: actualizarlas antes de desplegar.
 #   EC2_HOST          → IP elástica o DNS público de la instancia EC2
 #   EC2_SSH_KEY       → contenido de la llave privada (labsuser.pem / vockey)
 #   PROD_DATABASE_URL → mysql://usuario_app:CLAVE@endpoint-rds:3306/agenda_facil
 #   PROD_JWT_SECRET   → secreto aleatorio de 48+ bytes
 # Variables (no secretas):
-#   AWS_REGION (us-east-1), S3_FRONTEND_BUCKET, S3_UPLOADS_BUCKET, CLOUDFRONT_DISTRIBUTION_ID,
-#   PUBLIC_ORIGIN (https://tudominio.com o https://dxxxx.cloudfront.net)
+#   AWS_REGION (us-east-1), S3_UPLOADS_BUCKET, PUBLIC_ORIGIN (https://tudominio.com, https://dxxxx.cloudfront.net
+#   o https://<ip>.sslip.io), TRUST_PROXY (proxies delante de Express: 2 = CloudFront + Nginx, valor por
+#   defecto; 1 = solo Nginx). Modo CloudFront: S3_FRONTEND_BUCKET y CLOUDFRONT_DISTRIBUTION_ID.
+#   Si CLOUDFRONT_DISTRIBUTION_ID está vacía (Learner Labs que bloquean CloudFront, EnableCloudFront=false)
+#   el frontend se publica en la propia EC2 por SSH y no se necesitan credenciales de AWS en GitHub.
 name: Deploy
 
 on:
@@ -136,6 +139,7 @@ jobs:
           S3_UPLOADS_BUCKET: ${{ vars.S3_UPLOADS_BUCKET }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          TRUST_PROXY: ${{ vars.TRUST_PROXY || '2' }}
         run: |
           SSH_OPTS=(-i ~/.ssh/deploy_key)
           TARGET="ec2-user@$EC2_HOST"
@@ -143,8 +147,8 @@ jobs:
           # El archivo de entorno se envía por stdin (no queda en el historial de comandos ni en los logs).
           # Valores entre comillas simples: válidos para systemd (EnvironmentFile) y para bash (source).
           # La contraseña dentro de PROD_DATABASE_URL debe ir codificada para URL y sin comillas simples.
-          printf "NODE_ENV=production\nPORT=3000\nDATABASE_URL='%s'\nJWT_SECRET='%s'\nJWT_EXPIRES_IN=8h\nCORS_ORIGINS='%s'\nTRUST_PROXY=2\nRATE_LIMIT_AUTH_MAX=20\nSTORAGE_DRIVER=s3\nS3_BUCKET='%s'\nAWS_REGION='%s'\n" \
-            "$PROD_DATABASE_URL" "$PROD_JWT_SECRET" "$PUBLIC_ORIGIN" "$S3_UPLOADS_BUCKET" "$AWS_REGION" \
+          printf "NODE_ENV=production\nPORT=3000\nDATABASE_URL='%s'\nJWT_SECRET='%s'\nJWT_EXPIRES_IN=8h\nCORS_ORIGINS='%s'\nTRUST_PROXY='%s'\nRATE_LIMIT_AUTH_MAX=20\nSTORAGE_DRIVER=s3\nS3_BUCKET='%s'\nAWS_REGION='%s'\n" \
+            "$PROD_DATABASE_URL" "$PROD_JWT_SECRET" "$PUBLIC_ORIGIN" "$TRUST_PROXY" "$S3_UPLOADS_BUCKET" "$AWS_REGION" \
             | ssh "${SSH_OPTS[@]}" "$TARGET" 'sudo install -m 600 -o agenda -g agenda /dev/stdin /etc/agenda-facil/api.env'
           ssh "${SSH_OPTS[@]}" "$TARGET" 'rm -rf /tmp/agenda-deploy && mkdir -p /tmp/agenda-deploy && tar -xzf /tmp/backend.tar.gz -C /tmp/agenda-deploy && sudo bash /tmp/agenda-deploy/infra/aws/ec2/remote-deploy.sh /tmp/agenda-deploy/backend'
       - name: Verificar salud de la API
@@ -156,7 +160,7 @@ jobs:
           exit 1
 
   frontend:
-    name: Frontend → S3 + CloudFront
+    name: Frontend → S3 + CloudFront (o EC2)
     needs: [authorize, backend]
     runs-on: ubuntu-latest
     environment: production
@@ -176,6 +180,7 @@ jobs:
           npm ci
           npm run build
       - name: Credenciales AWS (temporales del Learner Lab)
+        if: vars.CLOUDFRONT_DISTRIBUTION_ID != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -183,6 +188,7 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_REGION }}
       - name: Publicar en S3
+        if: vars.CLOUDFRONT_DISTRIBUTION_ID != ''
         env:
           BUCKET: ${{ vars.S3_FRONTEND_BUCKET }}
         run: |
@@ -190,9 +196,25 @@ jobs:
             --cache-control "public,max-age=31536000,immutable"
           aws s3 cp frontend/dist/index.html "s3://$BUCKET/index.html" --cache-control "no-cache"
       - name: Invalidar caché de CloudFront
+        if: vars.CLOUDFRONT_DISTRIBUTION_ID != ''
         env:
           DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
         run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/index.html" "/"
+      - name: Publicar en EC2 (sin CloudFront; Nginx sirve el frontend)
+        if: vars.CLOUDFRONT_DISTRIBUTION_ID == ''
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          SSH_OPTS=(-i ~/.ssh/deploy_key)
+          TARGET="ec2-user@$EC2_HOST"
+          tar -czf frontend.tar.gz frontend/dist infra/aws/ec2/remote-frontend.sh
+          scp "${SSH_OPTS[@]}" frontend.tar.gz "$TARGET:/tmp/frontend.tar.gz"
+          ssh "${SSH_OPTS[@]}" "$TARGET" 'rm -rf /tmp/agenda-frontend && mkdir -p /tmp/agenda-frontend && tar -xzf /tmp/frontend.tar.gz -C /tmp/agenda-frontend && sudo bash /tmp/agenda-frontend/infra/aws/ec2/remote-frontend.sh /tmp/agenda-frontend/frontend/dist'
       - name: Verificar sitio
         env:
           PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}

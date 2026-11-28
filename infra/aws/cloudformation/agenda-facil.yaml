@@ -3,7 +3,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Agenda Fácil - Infraestructura SaaS (VPC, EC2 + Nginx + Node.js, RDS MySQL privada,
   S3 privados, CloudFront con OAC y Route 53 opcional). Pensada para AWS Academy Learner Lab:
-  NO crea roles IAM (usa el perfil existente LabInstanceProfile).
+  NO crea roles IAM (usa el perfil existente LabInstanceProfile). Con EnableCloudFront=false
+  (Learner Labs que bloquean CloudFront) Nginx en EC2 sirve frontend y API en el mismo dominio.
 
 Parameters:
   ProjectName:
@@ -32,6 +33,14 @@ Parameters:
     Description: >-
       Rango autorizado para SSH. Recomendado: tu IP pública /32. GitHub Actions usa IPs
       variables, por lo que el despliegue automático por SSH requiere 0.0.0.0/0 (solo llave, sin contraseña).
+  EnableCloudFront:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: >-
+      true = frontend en S3 + CloudFront (arquitectura principal). false = algunos Learner Lab deniegan
+      todas las acciones de CloudFront; Nginx en EC2 sirve el frontend y la API (HTTPS con
+      infra/aws/ec2/configurar-https.sh) y no se crean el bucket de frontend ni la distribución.
   RestrictHttpToCloudFront:
     Type: String
     Default: 'true'
@@ -75,9 +84,11 @@ Parameters:
     Description: (Opcional) ID de la zona alojada de Route 53 del dominio para crear el registro alias.
 
 Conditions:
-  HasCustomDomain: !And [!Not [!Equals [!Ref DomainName, '']], !Not [!Equals [!Ref AcmCertificateArn, '']]]
+  UseCloudFront: !Equals [!Ref EnableCloudFront, 'true']
+  WithoutCloudFront: !Not [!Condition UseCloudFront]
+  HasCustomDomain: !And [!Condition UseCloudFront, !Not [!Equals [!Ref DomainName, '']], !Not [!Equals [!Ref AcmCertificateArn, '']]]
   CreateDnsRecord: !And [!Condition HasCustomDomain, !Not [!Equals [!Ref HostedZoneId, '']]]
-  OnlyCloudFront: !Equals [!Ref RestrictHttpToCloudFront, 'true']
+  OnlyCloudFront: !And [!Condition UseCloudFront, !Equals [!Ref RestrictHttpToCloudFront, 'true']]
   IsUsEast1: !Equals [!Ref 'AWS::Region', us-east-1]
 
 Resources:
@@ -155,13 +166,17 @@ Resources:
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Agenda Facil - API en EC2 (HTTP desde CloudFront, SSH restringido)
+      GroupDescription: Agenda Facil - EC2 (HTTP desde CloudFront o publico, SSH restringido)
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - !If
           - OnlyCloudFront
           - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourcePrefixListId: !Ref CloudFrontPrefixListId, Description: HTTP solo desde CloudFront }
           - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP publico }
+        - !If
+          - WithoutCloudFront
+          - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTPS publico (Nginx con Lets Encrypt) }
+          - !Ref AWS::NoValue
         - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SSHAllowedCidr, Description: SSH administracion y despliegue }
       Tags: [{ Key: Name, Value: !Sub '${ProjectName}-web-sg' }]
   DatabaseSecurityGroup:
@@ -277,9 +292,18 @@ Resources:
           WantedBy=multi-user.target
           UNIT
 
+          install -d -o agenda -g agenda "$APP_DIR/frontend-releases"
+
           cat > /etc/nginx/conf.d/agenda-facil.conf <<'NGINX'
-          # Nginx como proxy inverso: recibe tráfico de CloudFront en el puerto 80 y lo
-          # reenvía a Node.js (127.0.0.1:3000). Solo expone /api/; el frontend se sirve desde S3.
+          # Nginx como proxy inverso de la API (127.0.0.1:3000) y servidor del frontend compilado.
+          # - Con CloudFront: el puerto 80 solo recibe /api/* desde CloudFront; el frontend sale de S3.
+          # - Sin CloudFront (EnableCloudFront=false): sirve también la SPA desde /opt/agenda-facil/frontend
+          #   (publicada por remote-frontend.sh); configurar-https.sh añade el certificado de Let's Encrypt.
+          map $http_x_forwarded_proto $agenda_forwarded_proto {
+              default $http_x_forwarded_proto;
+              ''      $scheme;
+          }
+
           server {
               listen 80 default_server;
               listen [::]:80 default_server;
@@ -293,12 +317,29 @@ Resources:
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+                  proxy_set_header X-Forwarded-Proto $agenda_forwarded_proto;
                   proxy_read_timeout 30s;
               }
 
+              # Frontend (SPA de React). Si no se ha publicado en EC2, responde 404.
+              root /opt/agenda-facil/frontend;
+              add_header X-Content-Type-Options nosniff always;
+              add_header X-Frame-Options SAMEORIGIN always;
+              add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+              location /assets/ {
+                  try_files $uri =404;
+                  expires 1y;
+                  add_header Cache-Control "public, max-age=31536000, immutable" always;
+                  add_header X-Content-Type-Options nosniff always;
+              }
+
               location / {
-                  return 404;
+                  try_files $uri /index.html =404;
+                  add_header Cache-Control "no-cache" always;
+                  add_header X-Content-Type-Options nosniff always;
+                  add_header X-Frame-Options SAMEORIGIN always;
+                  add_header Referrer-Policy strict-origin-when-cross-origin always;
               }
           }
           NGINX
@@ -322,6 +363,7 @@ Resources:
   # ---------------------------------------------------------------- Almacenamiento (S3)
   FrontendBucket:
     Type: AWS::S3::Bucket
+    Condition: UseCloudFront
     Properties:
       BucketName: !Sub '${ProjectName}-frontend-${AWS::AccountId}'
       PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
@@ -329,6 +371,7 @@ Resources:
       BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    Condition: UseCloudFront
     Properties:
       Bucket: !Ref FrontendBucket
       PolicyDocument:
@@ -378,6 +421,7 @@ Resources:
   # ---------------------------------------------------------------- CDN (CloudFront)
   FrontendOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
+    Condition: UseCloudFront
     Properties:
       OriginAccessControlConfig:
         Name: !Sub '${ProjectName}-oac'
@@ -386,6 +430,7 @@ Resources:
         SigningProtocol: sigv4
   SpaRewriteFunction:
     Type: AWS::CloudFront::Function
+    Condition: UseCloudFront
     Properties:
       Name: !Sub '${ProjectName}-spa-rewrite'
       AutoPublish: true
@@ -399,6 +444,7 @@ Resources:
         }
   ApiCachePolicy:
     Type: AWS::CloudFront::CachePolicy
+    Condition: UseCloudFront
     Properties:
       CachePolicyConfig:
         Name: !Sub '${ProjectName}-api-no-cache'
@@ -414,6 +460,7 @@ Resources:
           CookiesConfig: { CookieBehavior: none }
   Distribution:
     Type: AWS::CloudFront::Distribution
+    Condition: UseCloudFront
     Properties:
       DistributionConfig:
         Comment: !Sub '${ProjectName} - frontend S3 + API EC2'
@@ -476,17 +523,26 @@ Resources:
 
 Outputs:
   CloudFrontUrl:
+    Condition: UseCloudFront
     Description: URL pública HTTPS de la aplicación (dominio por defecto de CloudFront)
     Value: !Sub 'https://${Distribution.DomainName}'
   CustomDomainUrl:
     Condition: HasCustomDomain
     Value: !Sub 'https://${DomainName}'
   DistributionId:
+    Condition: UseCloudFront
     Description: Variable CLOUDFRONT_DISTRIBUTION_ID de GitHub
     Value: !Ref Distribution
   FrontendBucketName:
+    Condition: UseCloudFront
     Description: Variable S3_FRONTEND_BUCKET de GitHub
     Value: !Ref FrontendBucket
+  Ec2PublicHostname:
+    Condition: WithoutCloudFront
+    Description: >-
+      Nombre DNS público de la IP elástica (servicio sslip.io) para emitir el certificado HTTPS con
+      configurar-https.sh. PUBLIC_ORIGIN = https://<este valor>
+    Value: !Join ['', [!Join ['-', !Split ['.', !Ref ApiElasticIp]], '.sslip.io']]
   UploadsBucketName:
     Description: Variable S3_UPLOADS_BUCKET de GitHub
     Value: !Ref UploadsBucket

@@ -3,7 +3,8 @@
 # Uso:
 #   export DB_MASTER_PASSWORD='ContraseñaSegura123'   # no se guarda en el repositorio
 #   bash infra/aws/scripts/01-desplegar-infraestructura.sh
-# Variables opcionales: STACK_NAME, AWS_REGION, SSH_CIDR, DOMAIN_NAME, ACM_CERT_ARN, HOSTED_ZONE_ID, PREFIX_LIST_ID
+# Variables opcionales: STACK_NAME, AWS_REGION, SSH_CIDR, DOMAIN_NAME, ACM_CERT_ARN, HOSTED_ZONE_ID, PREFIX_LIST_ID,
+#   ENABLE_CLOUDFRONT=false (Learner Labs que bloquean CloudFront: Nginx en EC2 sirve el frontend)
 set -euo pipefail
 
 STACK_NAME="${STACK_NAME:-agenda-facil}"
@@ -18,6 +19,7 @@ PARAMS=("DBMasterPassword=$DB_MASTER_PASSWORD" "SSHAllowedCidr=${SSH_CIDR:-0.0.0
 [ -n "${ACM_CERT_ARN:-}" ] && PARAMS+=("AcmCertificateArn=$ACM_CERT_ARN")
 [ -n "${HOSTED_ZONE_ID:-}" ] && PARAMS+=("HostedZoneId=$HOSTED_ZONE_ID")
 [ -n "${PREFIX_LIST_ID:-}" ] && PARAMS+=("CloudFrontPrefixListId=$PREFIX_LIST_ID")
+[ -n "${ENABLE_CLOUDFRONT:-}" ] && PARAMS+=("EnableCloudFront=$ENABLE_CLOUDFRONT")
 
 echo "Desplegando stack $STACK_NAME en $REGION (RDS y CloudFront pueden tardar 15-25 minutos)…"
 aws cloudformation deploy \
