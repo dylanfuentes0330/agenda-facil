@@ -22,7 +22,8 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 | Almacenamiento de logos | Subida a S3 + URL prefirmada (200) y acceso sin firma denegado (403) |
 | CD (GitHub Actions) | Entorno `production` con revisor obligatorio y solo `main`; **Deploy #3 en verde (3/3 jobs)** con la versión final `6aa1439` |
 | Auditoría técnica | `AUDITORIA_TECNICA.md`: H-01…H-20 |
-| Evidencias | `docs/evidencias/despliegue-aws.md` y archivos enlazados; 17 capturas de producción en `docs/capturas/aws/` |
+| Evidencias | `docs/evidencias/despliegue-aws.md`, `evidencias-github.md`, `verificacion-getting-started.txt`; 20 capturas de producción en `docs/capturas/aws/` y 10 de GitHub en `docs/capturas/github/` |
+| Rúbrica del corte 3 | `docs/CHECKLIST_RUBRICA_CORTE3.md`, `docs/MODALIDAD_INDIVIDUAL.md`, explicaciones de React, CI/CD y AWS en `SUSTENTACION/`, documento APA actualizado (50 páginas, 11 tablas, 26 figuras) |
 | Secretos | Ninguno en Git ni en logs; contraseñas de producción solo en el equipo del líder y en secretos del entorno `production` |
 
 ## 2. Lo que NO está hecho (y por qué)
@@ -33,8 +34,10 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 | Dominio personalizado | PENDIENTE DE INTERVENCIÓN HUMANA | No existe dominio; se usa `sslip.io`. No se compra nada sin autorización |
 | Rol IAM de mínimo privilegio | BLOQUEADA | Learner Lab no permite crear roles; se usa `LabInstanceProfile` (documentado) |
 | Capturas de la consola de AWS y de GitHub | PENDIENTE DE INTERVENCIÓN HUMANA | Deben tomarse desde las cuentas del equipo (`docs/evidencias-requeridas.md`) |
-| Commits y PRs de cada integrante | PENDIENTE DE INTERVENCIÓN HUMANA | Solo pueden hacerlos los integrantes desde sus cuentas |
-| Portada del documento, integrantes, verificación de referencias | PENDIENTE DE INTERVENCIÓN HUMANA | Datos personales que solo el equipo tiene |
+| Criterios de equipo (colaboradores, aprobación de PR por otro integrante, mínimo de commits propios) | REQUIERE AUTORIZACIÓN DEL DOCENTE | Proyecto individual; ver `docs/MODALIDAD_INDIVIDUAL.md` §5 |
+| Sustentación presencial | NO SE REALIZARÁ | Decisión del estudiante; requiere decisión del docente |
+| Perfil de GitHub | PENDIENTE DE INTERVENCIÓN HUMANA | README preparado en `ENTREGA_FINAL_AGENDA_FACIL/09_EVIDENCIAS_GITHUB/perfil-github/`; faltan foto y datos personales |
+| Portada del documento APA y verificación de referencias | PENDIENTE DE INTERVENCIÓN HUMANA | Nombre, código, programa, curso, docente y fecha |
 
 ## 3. Acciones del equipo, en orden de prioridad
 

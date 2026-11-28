@@ -5,15 +5,22 @@
 # que apunte a esa IP) y configura Nginx para redirigir HTTP → HTTPS. Idempotente.
 # Requiere el puerto 80 abierto a Internet (validación HTTP-01) y el 443 para servir HTTPS.
 #
-# Uso: sudo bash configurar-https.sh <nombre-dns>
+# Uso: sudo bash configurar-https.sh <nombre-dns> [otro-nombre ...]
+#   p. ej. sudo bash configurar-https.sh midominio.tech www.midominio.tech   (el primero es el principal)
+# Cada nombre debe tener ya un registro DNS A hacia la IP elástica.
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-HOST="${1:?Indica el nombre DNS (salida Ec2PublicHostname)}"
-if ! printf '%s' "$HOST" | grep -Eq '^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$'; then
-  echo "ERROR: nombre DNS no válido: $HOST"
-  exit 1
-fi
+[ $# -ge 1 ] || { echo "Indica al menos un nombre DNS (salida Ec2PublicHostname o tu dominio)"; exit 1; }
+HOST="$1"
+DOMAIN_ARGS=()
+for name in "$@"; do
+  if ! printf '%s' "$name" | grep -Eq '^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$'; then
+    echo "ERROR: nombre DNS no válido: $name"
+    exit 1
+  fi
+  DOMAIN_ARGS+=(--domains "$name")
+done
 
 # Certbot en un entorno virtual de Python (método oficial para sistemas sin snap, como Amazon Linux 2023)
 if [ ! -x /opt/certbot/bin/certbot ]; then
@@ -25,11 +32,11 @@ if [ ! -x /opt/certbot/bin/certbot ]; then
 fi
 
 # El server_name debe coincidir para que certbot modifique el bloque correcto.
-sed -i "s/^\(\s*\)server_name .*;/\1server_name $HOST;/" /etc/nginx/conf.d/agenda-facil.conf
+sed -i "s/^\(\s*\)server_name .*;/\1server_name $*;/" /etc/nginx/conf.d/agenda-facil.conf
 nginx -t && systemctl reload nginx
 
 certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
-  --domains "$HOST" --redirect --keep-until-expiring
+  "${DOMAIN_ARGS[@]}" --redirect --keep-until-expiring
 
 # HSTS solo una vez que HTTPS funciona (6 meses; sin preload porque el nombre puede cambiar).
 # Se añade junto a cada bloque de cabeceras del frontend: en Nginx, un add_header dentro de un

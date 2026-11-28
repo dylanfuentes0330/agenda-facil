@@ -1,23 +1,25 @@
 flowchart LR
-  Dev["Integrante<br/>rama feature/*"] -->|push| PR["Pull Request<br/>→ develop"]
+  Dev["Desarrollador<br/>rama feature/*, fix/* o docs/*"] -->|push| PR["Pull Request<br/>→ develop"]
   PR --> CI
-  subgraph CI["Workflow CI (GitHub Actions)"]
+  subgraph CI["Workflow CI · ci.yml"]
     direction TB
-    B["Backend<br/>npm ci → lint → build →<br/>pruebas con MySQL 8"]
-    F["Frontend<br/>npm ci → lint → pruebas →<br/>build (artefacto dist)"]
-    I["Infraestructura<br/>cfn-lint · ShellCheck ·<br/>actionlint"]
-    E["E2E Playwright<br/>flujo MVP completo"]
+    B["backend<br/>npm ci → lint → build →<br/>50 pruebas con MySQL 8.4"]
+    F["frontend<br/>npm ci → lint → 10 pruebas →<br/>build (artefacto dist)"]
+    I["infra<br/>cfn-lint · ShellCheck ·<br/>actionlint · plantilla sincronizada"]
+    E["e2e<br/>Playwright: flujo MVP 18 pasos"]
     B --> E
     F --> E
   end
-  CI -->|"revisión + aprobación"| Dv["develop"]
-  Dv -->|"PR de release"| M["main"]
-  M -->|"CI exitoso + AWS_DEPLOY_ENABLED"| D
-  subgraph D["Workflow Deploy"]
+  CI -->|"4 checks en verde + merge"| Dv["develop"]
+  Dv -->|"PR de release"| M["main (protegida)"]
+  M -->|"CI exitoso en push a main<br/>+ AWS_DEPLOY_ENABLED"| D
+  subgraph D["Workflow Deploy · deploy.yml"]
     direction TB
-    D1["Backend → EC2 por SSH<br/>release nueva · migraciones ·<br/>health check · rollback automático<br/>(solo a releases .deploy-ok)"]
-    D2["Frontend → S3<br/>+ invalidación CloudFront"]
-    D1 --> D2
+    A["authorize<br/>sin secretos: valida que el<br/>commit pertenece a main"]
+    AP{{"Aprobación manual<br/>entorno production"}}
+    D1["backend → EC2 por SSH<br/>api.env desde secretos · release ·<br/>migraciones Prisma · health check ·<br/>rollback automático"]
+    D2["frontend → EC2 por SSH<br/>(o S3 + CloudFront si existe)<br/>publicación atómica"]
+    A --> AP --> D1 --> D2
   end
-  D --> P["Producción<br/>https://dominio"]
-  P -.->|"falla: workflow_dispatch(ref anterior)<br/>o rollback.sh"| D
+  D --> P["Producción<br/>https://52-54-96-26.sslip.io"]
+  P -.->|"falla: Run workflow con ref anterior<br/>o rollback.sh en EC2"| D
