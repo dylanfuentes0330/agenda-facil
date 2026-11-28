@@ -22,8 +22,10 @@ ln -sfn "$RELEASE" "$APP_DIR/frontend"
 nginx -t
 systemctl reload nginx
 
-if ! curl -sf -o /dev/null http://127.0.0.1/; then
-  echo "ERROR: Nginx no devuelve el frontend en http://127.0.0.1/"
+# Sin HTTPS, el puerto 80 sirve la SPA. Con HTTPS (configurar-https.sh), el 80 solo redirige para el nombre
+# público y la SPA se sirve en el 443: se acepta cualquiera de los dos (-k: solo es una comprobación local).
+if ! curl -sf -o /dev/null http://127.0.0.1/ && ! curl -sfk -o /dev/null https://127.0.0.1/; then
+  echo "ERROR: Nginx no devuelve el frontend en http://127.0.0.1/ ni en https://127.0.0.1/"
   exit 1
 fi
 find "$RELEASES" -mindepth 1 -maxdepth 1 -type d | sort | head -n -3 | { grep -vxF "$RELEASE" || true; } | xargs -r rm -rf

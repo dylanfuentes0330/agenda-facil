@@ -147,8 +147,8 @@ jobs:
           # El archivo de entorno se envía por stdin (no queda en el historial de comandos ni en los logs).
           # Valores entre comillas simples: válidos para systemd (EnvironmentFile) y para bash (source).
           # La contraseña dentro de PROD_DATABASE_URL debe ir codificada para URL y sin comillas simples.
-          printf "NODE_ENV=production\nPORT=3000\nDATABASE_URL='%s'\nJWT_SECRET='%s'\nJWT_EXPIRES_IN=8h\nCORS_ORIGINS='%s'\nTRUST_PROXY='%s'\nRATE_LIMIT_AUTH_MAX=20\nSTORAGE_DRIVER=s3\nS3_BUCKET='%s'\nAWS_REGION='%s'\n" \
-            "$PROD_DATABASE_URL" "$PROD_JWT_SECRET" "$PUBLIC_ORIGIN" "$TRUST_PROXY" "$S3_UPLOADS_BUCKET" "$AWS_REGION" \
+          printf "NODE_ENV=production\nPORT=3000\nDATABASE_URL='%s'\nJWT_SECRET='%s'\nJWT_EXPIRES_IN=8h\nCORS_ORIGINS='%s'\nTRUST_PROXY='%s'\nRATE_LIMIT_AUTH_MAX=20\nSTORAGE_DRIVER=s3\nS3_BUCKET='%s'\nAWS_REGION='%s'\nAPP_VERSION='%s'\n" \
+            "$PROD_DATABASE_URL" "$PROD_JWT_SECRET" "$PUBLIC_ORIGIN" "$TRUST_PROXY" "$S3_UPLOADS_BUCKET" "$AWS_REGION" "$(cat backend/REVISION)" \
             | ssh "${SSH_OPTS[@]}" "$TARGET" 'sudo install -m 600 -o agenda -g agenda /dev/stdin /etc/agenda-facil/api.env'
           ssh "${SSH_OPTS[@]}" "$TARGET" 'rm -rf /tmp/agenda-deploy && mkdir -p /tmp/agenda-deploy && tar -xzf /tmp/backend.tar.gz -C /tmp/agenda-deploy && sudo bash /tmp/agenda-deploy/infra/aws/ec2/remote-deploy.sh /tmp/agenda-deploy/backend'
       - name: Verificar salud de la API
