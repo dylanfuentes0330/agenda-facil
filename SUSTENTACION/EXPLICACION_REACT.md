@@ -1,56 +1,161 @@
-# Frontend React — explicación para la sustentación
+# Frontend React — explicación de componentes y configuración
 
-## Configuración
-- **Vite 6** (`frontend/vite.config.js`): servidor de desarrollo en el puerto 5173 con **proxy** de `/api` y `/uploads`
-  hacia el backend (puerto 3000). `npm run build` genera archivos estáticos en `frontend/dist` (HTML, JS y CSS con hash),
-  que en producción se suben a S3.
-- **Variables**: `VITE_API_URL` vacía → la app llama a `/api` en el mismo dominio (CloudFront enruta `/api/*` a EC2).
-- **ESLint** con reglas de hooks de React; **Vitest + Testing Library** para pruebas de componentes.
+> Criterio 8 de la rúbrica. Todo lo que se describe aquí se comprobó en el código de `frontend/`.
 
-## Estructura (`frontend/src`)
-| Carpeta / archivo | Responsabilidad |
+## 0. ¿Next.js o Vite? (`next.config`)
+
+Agenda Fácil **no usa Next.js**: no existe `next.config.js`/`next.config.ts`, ni carpetas `app/` o `pages/` de Next, ni
+renderizado en servidor. Es una **SPA (Single Page Application) de React 19 construida con Vite 6**. El archivo que cumple
+el papel de `next.config` es **`frontend/vite.config.js`**:
+
+```js
+export default defineConfig({
+  plugins: [react()],                       // JSX + Fast Refresh en desarrollo
+  server: {
+    port: 5173,
+    proxy: { '/api': 'http://localhost:3000', '/uploads': 'http://localhost:3000' }, // backend local
+  },
+  build: { outDir: 'dist', sourcemap: false }, // salida estática que se publica en producción
+  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.js'], css: false },  // Vitest
+});
+```
+
+| Pregunta de la rúbrica | Respuesta en Agenda Fácil |
 |---|---|
-| `main.jsx` | Punto de entrada: `BrowserRouter` → `ToastProvider` → `AuthProvider` → `App` |
-| `App.jsx` | Definición de rutas (React Router 7) |
-| `api/client.js` | Cliente HTTP con `fetch`: agrega el token, normaliza errores en `ApiError` (código, mensaje, errores por campo) y cierra sesión ante un 401 |
-| `context/AuthContext.jsx` | Estado global de sesión: usuario, negocio, `login`, `registerBusiness`, `registerClient`, `logout`, `refresh` |
-| `context/ToastContext.jsx` | Notificaciones de éxito/error |
-| `hooks/useAsync.js` | Hook para cargar datos con estados `loading`, `error`, `data` y `reload` |
-| `components/ui.jsx` | Componentes reutilizables: `Button`, `Input`, `Select`, `Textarea`, `Alert`, `Spinner`, `EmptyState`, `StatusBadge`, `Card`, `PageHeader`, `StatCard`, `Modal`, `ConfirmDialog` |
-| `components/Layouts.jsx` | `PublicLayout` (barra superior), `BusinessLayout` (barra lateral del panel), `RequireRole` (rutas protegidas) |
-| `components/SlotPicker.jsx` | Selector de fecha y franjas horarias, reutilizado por el cliente y por el negocio |
-| `pages/` | Páginas: `Landing`, `auth/` (Login, Register), `client/` (Directory, BookingPage, MyReservations, Account), `business/` (Dashboard, Reservations, Services, Hours, Clients, ClientDetail, Settings) |
-| `utils/` | Formato de fechas/dinero y validaciones del lado del cliente |
-| `styles/global.css` | Sistema de diseño con variables CSS y reglas responsive |
+| ¿Dónde está el componente principal? | `frontend/src/App.jsx` (define todas las rutas). Se monta desde `frontend/src/main.jsx` |
+| ¿Cuál es el punto de entrada? | `frontend/index.html` (contiene `<div id="root">` y carga `/src/main.jsx`) → `main.jsx` → `App.jsx` |
+| ¿Dónde está el HTML? | `frontend/index.html` (único HTML; React genera el resto en el navegador) |
+| ¿Dónde está el CSS? | `frontend/src/styles/global.css` (sistema de diseño con variables CSS y *media queries*), importado en `main.jsx` |
+| ¿Dónde está el JavaScript? | `frontend/src/**/*.jsx` y `*.js` (JavaScript moderno con JSX; no se usa TypeScript) |
+| ¿Carpeta de estáticos? | `frontend/public/` (`favicon.svg`, se copia tal cual). La compilación genera `frontend/dist/` (`index.html` + `assets/*.js` y `*.css` con hash) |
+| ¿Dónde están los componentes? | `frontend/src/components/` (reutilizables) y `frontend/src/pages/` (pantallas) |
+| ¿Cómo se comunica con el backend? | `frontend/src/api/client.js` con `fetch` a rutas relativas `/api/...` (mismo dominio) |
 
-## Rutas
-| Ruta | Acceso | Página |
-|---|---|---|
-| `/` | Público | Landing con beneficios, funcionalidades y planes (leídos de la API) |
-| `/registro`, `/ingresar` | Público | Registro (negocio/cliente) e inicio de sesión |
-| `/reservar`, `/reservar/:slug` | Público (reservar requiere cliente) | Directorio y página de reserva del negocio |
-| `/mis-reservas`, `/cuenta` | Rol CLIENT | Reservas y perfil del cliente |
-| `/panel`, `/panel/citas`, `/panel/servicios`, `/panel/horarios`, `/panel/clientes`, `/panel/clientes/:id`, `/panel/configuracion` | Rol BUSINESS_ADMIN | Panel del negocio |
+## 1. Flujo de arranque
 
-`RequireRole` muestra un spinner mientras verifica la sesión, redirige a `/ingresar` si no hay usuario (recordando la
-ruta de origen) y redirige al inicio de su rol si el rol no corresponde.
+```mermaid
+flowchart LR
+  A["index.html<br/>div#root"] --> B["main.jsx<br/>createRoot"]
+  B --> C["BrowserRouter"] --> D["ToastProvider"] --> E["AuthProvider"] --> F["App.jsx<br/>Routes"]
+  F --> G["PublicLayout<br/>(landing, login, reservas)"]
+  F --> H["RequireRole BUSINESS_ADMIN<br/>→ BusinessLayout (panel)"]
+```
 
-## Manejo de estado
-- **Global**: sesión (contexto `AuthContext`) y notificaciones (`ToastContext`).
-- **Local**: `useState` en formularios y filtros; `useAsync` para datos remotos con recarga tras cada acción.
-- **Persistencia**: el token JWT se guarda en `localStorage` (clave `agenda-facil.token`); al recargar, `AuthContext`
-  llama a `/api/auth/me` para reconstruir la sesión.
+```jsx
+// frontend/src/main.jsx
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <BrowserRouter>
+      <ToastProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ToastProvider>
+    </BrowserRouter>
+  </StrictMode>,
+);
+```
 
-## Formularios y validación
-Validación en el cliente (`utils/validation.js`) para respuesta inmediata y mensajes accesibles (`aria-invalid`,
-`role="alert"`); el backend **vuelve a validar todo** con Zod y sus errores por campo se muestran en el mismo formulario.
+## 2. Estructura de carpetas (`frontend/`)
 
-## Responsive
-CSS con *media queries* (1024, 900, 720 y 340 px): en móvil la barra lateral se convierte en menú desplegable, las tablas
-se transforman en tarjetas y los modales se muestran como hoja inferior. La prueba E2E verifica que no exista
-desbordamiento horizontal en móvil, tablet y escritorio en 11 rutas.
+| Ruta | Función |
+|---|---|
+| `index.html` | HTML base, metadatos (idioma, descripción, `theme-color`) y punto de montaje |
+| `vite.config.js` | Configuración de Vite (desarrollo, proxy, build, pruebas) |
+| `eslint.config.js` | Reglas de calidad (React, hooks, refresh) — `npm run lint` |
+| `package.json` | Dependencias (React 19, React Router 7, lucide-react) y scripts `dev`, `build`, `preview`, `lint`, `test` |
+| `public/` | Archivos estáticos sin procesar (`favicon.svg`) |
+| `src/main.jsx` | Punto de entrada: proveedores globales y estilos |
+| `src/App.jsx` | **Componente principal**: mapa de rutas |
+| `src/api/client.js` | Cliente HTTP: token JWT, errores normalizados (`ApiError`), cierre de sesión ante 401 |
+| `src/context/AuthContext.jsx` | Estado de sesión: usuario, negocio, `login`, `register*`, `logout`, `refresh` |
+| `src/context/ToastContext.jsx` | Notificaciones de éxito y error |
+| `src/hooks/useAsync.js` | Carga de datos remotos con `loading`, `error`, `data`, `reload` |
+| `src/components/ui.jsx` | Componentes reutilizables: `Button`, `Field`, `Input`, `Select`, `Textarea`, `Alert`, `Spinner`, `EmptyState`, `StatusBadge`, `Badge`, `Card`, `PageHeader`, `StatCard`, `Modal`, `ConfirmDialog` |
+| `src/components/Layouts.jsx` | `PublicLayout`, `BusinessLayout` (barra lateral del panel) y **`RequireRole`** (control de acceso) |
+| `src/components/SlotPicker.jsx` | Selector de fecha y franjas libres (cliente y negocio) |
+| `src/components/AccountForms.jsx` | Formularios de cuenta compartidos |
+| `src/pages/Landing.jsx` | **Primera vista**: landing page con problema, funcionalidades y planes (desde la API) |
+| `src/pages/auth/` | `Login.jsx`, `Register.jsx` (negocio o cliente) |
+| `src/pages/client/` | `Directory`, `BookingPage`, `MyReservations`, `Account` |
+| `src/pages/business/` | `Dashboard`, `Reservations`, `ReservationForm`, `Services`, `Hours`, `Clients`, `ClientForm`, `ClientDetail`, `Settings` |
+| `src/utils/` | `format.js` (fechas y dinero) y `validation.js` (validación en el cliente) |
+| `src/styles/global.css` | Estilos globales y responsive (1024, 900, 720 y 340 px) |
+| `src/__tests__/`, `src/test/setup.js` | 10 pruebas de componentes y utilidades (Vitest + Testing Library) |
 
-## Preguntas típicas
-- **¿Por qué una SPA?** Navegación instantánea sin recargar, y se publica como archivos estáticos en S3 + CloudFront (barato y escalable).
-- **¿Cómo funciona el refresco en `/panel/citas` en producción?** Una función de CloudFront reescribe las rutas sin extensión a `index.html`; React Router resuelve la ruta en el navegador.
-- **¿Por qué las fechas no se desplazan con la zona horaria del navegador?** La API envía la hora local del negocio (`AAAA-MM-DDTHH:MM`) y el frontend la formatea con `timeZone: 'UTC'`, sin conversión.
+## 3. Rutas y control de acceso (criterio 7)
+
+```jsx
+// frontend/src/App.jsx (resumen)
+<Route element={<PublicLayout />}>
+  <Route index element={<Landing />} />              {/* primera vista: landing page */}
+  <Route path="ingresar" element={<Login />} />
+  <Route path="registro" element={<Register />} />
+  <Route path="reservar" element={<Directory />} />
+  <Route path="reservar/:slug" element={<BookingPage />} />
+  <Route element={<RequireRole role="CLIENT" />}>    {/* solo clientes autenticados */}
+    <Route path="mis-reservas" element={<MyReservations />} />
+    <Route path="cuenta" element={<Account />} />
+  </Route>
+</Route>
+<Route element={<RequireRole role="BUSINESS_ADMIN" />}> {/* solo administradores de negocio */}
+  <Route path="panel" element={<BusinessLayout />}> … </Route>
+</Route>
+```
+
+```jsx
+// frontend/src/components/Layouts.jsx
+export function RequireRole({ role }) {
+  …
+  if (!user) return <Navigate to="/ingresar" replace state={{ from: location.pathname + location.search }} />;
+  if (role && user.role !== role) return <Navigate to={homeForRole(user.role)} replace />;
+  …
+}
+```
+
+Verificado en producción: la primera vista es la landing (`docs/capturas/aws/prod-00-primera-vista-landing.png`) y
+`/panel` sin sesión redirige al login (`prod-18-panel-sin-sesion-redirige-login.png`). La protección real está en el
+backend: sin token la API responde **401** y con el rol equivocado **403** (`docs/evidencias/verificacion-produccion.txt`).
+
+## 4. Comunicación con el backend
+
+```js
+// frontend/src/api/client.js
+const BASE_URL = import.meta.env.VITE_API_URL || '';            // vacío → mismo dominio
+const url = new URL(`${BASE_URL}/api${path}`, window.location.origin);
+// Añade "Authorization: Bearer <token>", serializa JSON, y ante 401 cierra la sesión.
+```
+
+- **Desarrollo:** el navegador llama a `http://localhost:5173/api/...` y Vite lo redirige al backend en `:3000`.
+- **Producción:** el navegador llama a `https://52-54-96-26.sslip.io/api/...` y **Nginx** lo envía a Node.js en
+  `127.0.0.1:3000`. Frontend y API comparten dominio: no hay problemas de CORS ni de cookies de terceros.
+- El token JWT se guarda en `localStorage` (`agenda-facil.token`); al recargar, `AuthContext` llama a `/api/auth/me`.
+
+## 5. Build y publicación
+
+```bash
+npm ci --prefix frontend
+npm run build --prefix frontend      # → frontend/dist (index.html + assets con hash)
+```
+
+En producción el job *Frontend* de `deploy.yml` empaqueta `frontend/dist` y `remote-frontend.sh` lo publica en
+`/opt/agenda-facil/frontend` (cambio atómico por enlace simbólico). Nginx sirve los archivos con
+`try_files $uri /index.html`, así que al recargar `/panel/citas` se entrega `index.html` y React Router resuelve la ruta.
+`assets/` se cachea 1 año (nombres con hash) e `index.html` va con `no-cache`.
+
+## 6. Estado, formularios y diseño responsive
+
+- **Estado global:** sesión (`AuthContext`) y notificaciones (`ToastContext`). **Local:** `useState` y `useAsync`.
+- **Validación doble:** inmediata en el cliente (`utils/validation.js`, con `aria-invalid` y `role="alert"`) y
+  definitiva en el backend con Zod; los errores por campo del backend se muestran en el mismo formulario.
+- **Responsive:** en móvil la barra lateral pasa a menú desplegable, las tablas a tarjetas y los modales a hoja inferior.
+  El E2E comprueba que no haya desbordamiento horizontal en móvil, tablet y escritorio.
+
+## 7. Guía rápida para entender el proyecto
+
+1. Abre `frontend/index.html` → verás el `div#root`.
+2. Sigue a `src/main.jsx` → proveedores globales.
+3. Lee `src/App.jsx` → todas las pantallas y quién puede verlas.
+4. Abre una página, p. ej. `src/pages/business/Services.jsx` → usa `useAsync` para cargar datos con `api/client.js` y
+   componentes de `components/ui.jsx`.
+5. Ejecuta `npm run dev --prefix frontend` con el backend encendido y navega a `http://localhost:5173`.

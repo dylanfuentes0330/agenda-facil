@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // En desarrollo, /api y /uploads se redirigen al backend local (puerto 3000).
-// En producción, CloudFront enruta /api/* hacia EC2 y el resto hacia S3 (mismo dominio).
+// En producción todo se sirve desde el mismo dominio: Nginx en EC2 entrega dist/ y envía /api/* a Node.js
+// (o, con EnableCloudFront=true, CloudFront enruta /api/* hacia EC2 y el resto hacia S3).
 export default defineConfig({
   plugins: [react()],
   server: {
