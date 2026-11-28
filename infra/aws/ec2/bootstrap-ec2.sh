@@ -55,6 +55,9 @@ UNIT
 
 install -d -o agenda -g agenda "$APP_DIR/frontend-releases"
 
+# Oculta la versión de Nginx en todos los server (incluido el de redirección que crea certbot)
+echo 'server_tokens off;' > /etc/nginx/conf.d/00-seguridad.conf
+
 cat > /etc/nginx/conf.d/agenda-facil.conf <<'NGINX'
 # Nginx como proxy inverso de la API (127.0.0.1:3000) y servidor del frontend compilado.
 # - Con CloudFront: el puerto 80 solo recibe /api/* desde CloudFront; el frontend sale de S3.

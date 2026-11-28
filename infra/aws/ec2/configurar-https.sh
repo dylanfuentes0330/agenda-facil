@@ -61,4 +61,6 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now certbot-renew.timer
 
-curl -sf -o /dev/null "https://$HOST/" && echo "HTTPS activo: https://$HOST"
+# Sin -f: solo se comprueba que TLS funciona (un 404 es normal si el frontend aún no se publicó).
+code=$(curl -s -o /dev/null -w '%{http_code}' "https://$HOST/") || { echo "ERROR: https://$HOST no responde"; exit 1; }
+echo "HTTPS activo: https://$HOST (HTTP $code)"
