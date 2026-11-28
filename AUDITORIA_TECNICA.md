@@ -90,6 +90,7 @@ Severidad: **Crítica** (impide la entrega/operación) · **Alta** · **Media** 
 | Token JWT en `localStorage` | Exposición ante XSS | Expiración de 8 h; React escapa el contenido; sin HTML de usuario |
 | Credenciales del Learner Lab caducan | Solo afecta al modo CloudFront (el despliegue real no usa credenciales AWS en GitHub) | Actualizar secretos antes de cada despliegue si se usa CloudFront |
 | La app solo responde con la sesión del Learner Lab iniciada | Fuera de sesión EC2 se detiene y la URL no carga | Iniciar el laboratorio ~10 min antes de la demostración; la IP elástica conserva la URL |
+| Conexión API → RDS sin TLS obligatorio (`require_secure_transport = OFF`, verificado) | Tráfico en claro dentro de la VPC privada | Mejora: *parameter group* con `require_secure_transport=ON` y `sslaccept=strict` con el CA de RDS |
 | Dependencia del DNS público `sslip.io` | Si el servicio fallara, la URL no resolvería | Acceso alternativo por IP; con un dominio propio basta un registro A y `configurar-https.sh` |
 | Historial inicial con autor “Claude Code (asistente IA)” | No acredita trabajo de integrantes | Cada integrante debe hacer commits y PRs propios |
 

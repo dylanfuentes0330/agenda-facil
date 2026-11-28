@@ -1,0 +1,27 @@
+flowchart TB
+  U["Usuarios (negocios y clientes)<br/>navegador de escritorio o móvil"]
+  DNS["DNS público<br/>52-54-96-26.sslip.io → 52.54.96.26<br/>(dominio personalizado: registro A pendiente)"]
+  U -->|"1 · resolución DNS"| DNS
+  U -->|"2 · HTTPS 443 (HTTP 80 → 301)"| EIP
+  subgraph AWS["AWS Academy Learner Lab · us-east-1 · stack CloudFormation agenda-facil"]
+    subgraph VPC["VPC 10.20.0.0/16 · Internet Gateway · sin NAT Gateway"]
+      subgraph PUB["Subred pública 10.20.1.0/24 · SG web: 80, 443, 22"]
+        EIP(["IP elástica 52.54.96.26"])
+        subgraph EC2["Amazon EC2 t3.micro · Amazon Linux 2023 · IMDSv2 · EBS gp3 cifrado"]
+          NGX["Nginx<br/>TLS Let's Encrypt · HSTS<br/>sirve la SPA React (dist)"]
+          API["Node.js 22 + Express (systemd)<br/>API REST · JWT · Zod · Prisma"]
+          NGX -->|"/api/* → 127.0.0.1:3000"| API
+        end
+        EIP --- NGX
+      end
+      subgraph PRIV["Subredes privadas 10.20.11.0/24 y 10.20.12.0/24 · sin ruta a Internet"]
+        RDS[("Amazon RDS MySQL 8.4.11<br/>db.t3.micro · Single-AZ<br/>cifrada · no pública")]
+      end
+    end
+    S3U["Amazon S3 privado<br/>logos de negocios<br/>Block Public Access · SSE"]
+    IAM["IAM: LabInstanceProfile<br/>(perfil de instancia)"]
+  end
+  API -->|"3 · Prisma → 3306 (SG db: solo desde SG web)"| RDS
+  API -->|"4 · SDK v3 Put/Get · URL prefirmada"| S3U
+  IAM -.->|credenciales temporales| API
+  GH["GitHub Actions<br/>CI → Deploy (entorno production con aprobación)"] -->|"SSH: release backend + migraciones + frontend dist"| EIP

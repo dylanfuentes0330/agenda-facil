@@ -1,3 +1,4 @@
+%% Arquitectura OBJETIVO con CloudFront (EnableCloudFront=true). La desplegada en Learner Lab está en 07-arquitectura-aws-desplegada.mmd
 flowchart TB
   U["Usuarios<br/>(negocios y clientes)<br/>navegador / móvil"] -->|HTTPS| R53
   R53["Amazon Route 53<br/>DNS del dominio personalizado"] -->|alias A/AAAA| CF
@@ -9,7 +10,7 @@ flowchart TB
       EC2["Amazon EC2 t3.micro<br/>Amazon Linux 2023<br/>Nginx → Node.js/Express (systemd)<br/>IP elástica"]
     end
     subgraph PRIV["Subredes privadas (sin ruta a Internet)"]
-      RDS[("Amazon RDS<br/>MySQL 8.0 db.t3.micro<br/>cifrado, sin acceso público")]
+      RDS[("Amazon RDS<br/>MySQL 8.4 db.t3.micro<br/>cifrado, sin acceso público")]
     end
   end
   EC2 -->|"3306 (solo desde SG de EC2)"| RDS

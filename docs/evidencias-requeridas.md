@@ -22,6 +22,9 @@ deben presentarse como tales, no como evidencia de AWS.
 | Despliegue real en AWS (recursos, verificación de servicios, GitHub Actions, costos) | `docs/evidencias/despliegue-aws.md`, `docs/evidencias/verificacion-servicios.txt` |
 | E2E contra la URL pública de producción (18/18) | `docs/evidencias/resultado-e2e-produccion.md` + `docs/capturas/aws/prod-*.png` (17 capturas) |
 | Verificación técnica de producción (S3, roles, cabeceras, health) 11/11 | `docs/evidencias/verificacion-produccion.txt` |
+| Primera vista (landing) y `/panel` sin sesión → login, en producción | `docs/capturas/aws/prod-00-*.png`, `prod-18-*.png`, `prod-19-api-health.png` |
+| GitHub: repositorio, PR, ramas, commits, Actions, Deploy #3 y archivos YAML | `docs/capturas/github/gh-01…gh-10` |
+| Getting Started verificado en un clon limpio | `docs/evidencias/verificacion-getting-started.txt` |
 
 ## Pendientes — las debe tomar el equipo
 

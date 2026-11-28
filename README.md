@@ -11,6 +11,26 @@
 
 ---
 
+**🌐 Aplicación en producción: <https://52-54-96-26.sslip.io>** · Repositorio: <https://github.com/dylanfuentes0330/agenda-facil>
+· Proyecto individual · Universidad de la Costa · cuarto semestre
+
+> La URL responde mientras la sesión del AWS Academy Learner Lab está iniciada. El dominio personalizado está pendiente
+> (ver [docs/DOMINIO_PERSONALIZADO.md](docs/DOMINIO_PERSONALIZADO.md)).
+
+## Getting Started (resumen)
+
+```bash
+git clone https://github.com/dylanfuentes0330/agenda-facil.git && cd agenda-facil
+npm run install:all                      # dependencias de backend y frontend (npm ci)
+cp backend/.env.example backend/.env     # editar DATABASE_URL y JWT_SECRET (MySQL 8.4 local)
+npm run db:migrate --prefix backend && npm run db:seed --prefix backend
+npm run dev:backend                      # API en http://localhost:3000
+npm run dev:frontend                     # interfaz en http://localhost:5173
+```
+
+Pasos completos en [Instalación y ejecución local](#instalación-y-ejecución-local); compilación en [Build](#build-compilación);
+despliegue en [Despliegue en AWS Academy](#despliegue-en-aws-academy).
+
 ## Tabla de contenido
 
 1. [Problema que resuelve](#problema-que-resuelve)
@@ -23,15 +43,18 @@
 8. [Variables de entorno](#variables-de-entorno)
 9. [Base de datos y migraciones](#base-de-datos-y-migraciones)
 10. [Pruebas](#pruebas)
-11. [API REST](#api-rest)
-12. [CI/CD con GitHub Actions](#cicd-con-github-actions)
-13. [Despliegue en AWS Academy](#despliegue-en-aws-academy)
-14. [Dominio personalizado](#dominio-personalizado)
-15. [Capturas de pantalla](#capturas-de-pantalla)
-16. [Seguridad](#seguridad)
-17. [Integrantes](#integrantes)
-18. [Estado del proyecto](#estado-del-proyecto)
-19. [Licencia](#licencia)
+11. [Build (compilación)](#build-compilación)
+12. [Flujo de funcionamiento](#flujo-de-funcionamiento)
+13. [API REST](#api-rest)
+14. [CI/CD con GitHub Actions](#cicd-con-github-actions)
+15. [Despliegue en AWS Academy](#despliegue-en-aws-academy)
+16. [Dominio personalizado](#dominio-personalizado)
+17. [Capturas de pantalla](#capturas-de-pantalla)
+18. [Seguridad](#seguridad)
+19. [Autor y modalidad](#autor-y-modalidad)
+20. [Recursos adicionales](#recursos-adicionales)
+21. [Estado del proyecto](#estado-del-proyecto)
+22. [Licencia](#licencia)
 
 ---
 
@@ -98,11 +121,19 @@ disponibilidad y reservan en línea. El sistema **impide reservas incompatibles*
 
 ## Arquitectura
 
-![Arquitectura AWS](docs/diagramas/01-arquitectura-aws.png)
+### Arquitectura desplegada (AWS Academy Learner Lab)
 
-> **Despliegue real:** el Learner Lab del equipo **bloquea CloudFront**, así que se desplegó con `EnableCloudFront=false`:
-> Nginx en EC2 sirve el frontend y `/api/*` en el mismo dominio con HTTPS de Let's Encrypt; el resto (VPC, RDS privada,
-> S3 privado, IAM) es igual. La arquitectura con CloudFront sigue disponible en la plantilla (`EnableCloudFront=true`).
+![Arquitectura desplegada](docs/diagramas/07-arquitectura-aws-desplegada.png)
+
+El Learner Lab **bloquea CloudFront**, así que se desplegó con `EnableCloudFront=false`: **Nginx** en una **EC2 t3.micro**
+(IP elástica) sirve el frontend React y reenvía `/api/*` a **Node.js/Express**, con HTTPS de **Let's Encrypt**. La API usa
+**Prisma** contra **RDS MySQL 8.4** en subredes privadas y guarda los logos en **S3 privado** con URLs prefirmadas. Todo se
+crea con **CloudFormation** y se publica con **GitHub Actions**. Explicación completa:
+[SUSTENTACION/EXPLICACION_AWS.md](SUSTENTACION/EXPLICACION_AWS.md).
+
+### Arquitectura objetivo con CloudFront (`EnableCloudFront=true`)
+
+![Arquitectura AWS objetivo](docs/diagramas/01-arquitectura-aws.png)
 
 - **CloudFront** es la única puerta de entrada HTTPS: sirve el frontend desde un bucket **S3 privado** (Origin Access Control)
   y enruta `/api/*` hacia **EC2** (Nginx → Node.js). Frontend y API comparten dominio, por lo que no hay problemas de CORS ni de cookies de terceros.
@@ -161,7 +192,7 @@ agenda-facil/
 1. Clonar e instalar dependencias:
 
 ```bash
-git clone https://github.com/OWNER/REPO.git agenda-facil
+git clone https://github.com/dylanfuentes0330/agenda-facil.git agenda-facil
 ```
 
 ```bash
@@ -271,6 +302,32 @@ Prueba E2E (requiere backend en `:3000` y `npx vite preview --port 4173` en `fro
 BASE_URL=http://localhost:4173 node e2e/mvp-flow.cjs
 ```
 
+## Build (compilación)
+
+```bash
+npm run build                    # backend (prisma generate + verificación) y frontend (vite build)
+```
+
+- Frontend: `npm run build --prefix frontend` genera `frontend/dist/` (`index.html` + `assets/` con hash). Para probarlo:
+  `npm run preview --prefix frontend` (con el backend en marcha).
+- Backend: no se transpila; `npm run build --prefix backend` genera el cliente Prisma y verifica que todos los módulos
+  cargan. En producción se ejecuta con `node src/server.js` (servicio systemd).
+- Lint: `npm run lint` (ESLint en ambos proyectos).
+
+## Flujo de funcionamiento
+
+1. **Landing** (`/`): presenta el producto y los planes; es la primera vista (no se entra directo al panel).
+2. **Registro / login** (`/registro`, `/ingresar`): el dueño crea su negocio (rol `BUSINESS_ADMIN`) o un cliente su cuenta
+   (rol `CLIENT`). La API devuelve un JWT.
+3. **Configuración del negocio** (`/panel/*`, solo `BUSINESS_ADMIN`): servicios con precio y duración, horario semanal,
+   perfil, logo (S3) y enlace público de reservas.
+4. **Reserva del cliente** (`/reservar/:slug`): elige servicio y fecha; la API calcula las franjas libres; al confirmar,
+   una transacción con bloqueo por negocio en MySQL impide la doble reserva.
+5. **Gestión**: el negocio ve la agenda y el panel, crea citas manuales, reprograma o cancela; el cliente consulta y
+   cancela sus reservas dentro del plazo permitido.
+
+![Flujo de reservas](docs/diagramas/03-flujo-reservas.png)
+
 ## API REST
 
 Prefijo `/api`. Autenticación: `Authorization: Bearer <token>`. Errores: `{ "error": { "code", "message", "details" } }`.
@@ -330,16 +387,37 @@ variables en GitHub, activar `AWS_DEPLOY_ENABLED=true` y hacer push a `main`. Pa
 
 ## Dominio personalizado
 
-Sin dominio, la app queda accesible por HTTPS en `https://dxxxxxxxx.cloudfront.net` o, sin CloudFront, en
-`https://<ip-con-guiones>.sslip.io` (actual: <https://52-54-96-26.sslip.io>). Con un dominio propio sin CloudFront basta
-un registro A hacia la IP elástica y `configurar-https.sh tu-dominio`. Para un dominio propio
-(registrado fuera de AWS Academy, que no permite registrar dominios): certificado ACM en `us-east-1` validado por DNS →
-parámetros `DomainName`, `AcmCertificateArn` y (si se usa Route 53) `HostedZoneId` en el stack. Detalle en la guía.
-**No hay dominio propio**: la URL pública usa el servicio DNS gratuito `sslip.io`.
+**Estado: pendiente.** La URL pública actual, <https://52-54-96-26.sslip.io>, tiene HTTPS válido, pero `sslip.io` es un
+servicio DNS gratuito que solo traduce la IP incluida en el nombre: **no es un dominio propio** y no cumple el criterio 7
+de la rúbrica. La opción prevista es un dominio gratuito del **GitHub Student Developer Pack** (p. ej. `.tech`), que debe
+reclamar el propietario. Con el dominio, bastan dos registros **A** hacia la IP elástica `52.54.96.26` y:
+
+```bash
+sudo bash configurar-https.sh midominio.tech www.midominio.tech   # en la EC2; el script ya está probado
+```
+
+Pasos completos, opciones y verificación: [docs/DOMINIO_PERSONALIZADO.md](docs/DOMINIO_PERSONALIZADO.md). Con CloudFront
+(otra cuenta) se usan los parámetros `DomainName`, `AcmCertificateArn` y `HostedZoneId` del stack (guía de AWS §7).
 
 ## Capturas de pantalla
 
-Capturas reales tomadas por la prueba E2E automatizada en **entorno local** (no corresponden a AWS):
+### En producción (AWS, <https://52-54-96-26.sslip.io>)
+
+Capturas tomadas el 2026-11-28 por la prueba E2E contra la URL pública y por un navegador sin sesión:
+
+| Primera vista (landing) | `/panel` sin sesión → login | Panel del negocio |
+|---|---|---|
+| ![Landing producción](docs/capturas/aws/prod-00-primera-vista-landing.png) | ![Login](docs/capturas/aws/prod-18-panel-sin-sesion-redirige-login.png) | ![Panel](docs/capturas/aws/prod-13-dashboard-escritorio.png) |
+
+| Reserva confirmada | Agenda del negocio | Móvil |
+|---|---|---|
+| ![Reserva](docs/capturas/aws/prod-07-reserva-confirmada.png) | ![Agenda](docs/capturas/aws/prod-09-agenda-negocio.png) | ![Móvil](docs/capturas/aws/prod-14-dashboard-movil.png) |
+
+Todas: [`docs/capturas/aws`](docs/capturas/aws) · GitHub (PR, Actions, ramas): [`docs/capturas/github`](docs/capturas/github).
+
+### En entorno local
+
+Capturas reales tomadas por la prueba E2E automatizada en **entorno local**:
 
 | Landing | Panel del negocio | Reserva del cliente |
 |---|---|---|
@@ -349,8 +427,8 @@ Capturas reales tomadas por la prueba E2E automatizada en **entorno local** (no 
 |---|---|---|
 | ![Agenda tablet](docs/capturas/16-agenda-tablet.png) | ![Panel móvil](docs/capturas/14-dashboard-movil.png) | ![Móvil](docs/capturas/08-reserva-movil-horarios-ocupados.png) |
 
-Todas las capturas: [`docs/capturas`](docs/capturas). Las capturas del despliegue en AWS deben tomarlas los integrantes
-(ver [docs/evidencias-requeridas.md](docs/evidencias-requeridas.md)).
+Todas las capturas locales: [`docs/capturas`](docs/capturas). Las capturas de la consola de AWS se listan en
+[docs/evidencias-requeridas.md](docs/evidencias-requeridas.md).
 
 ## Seguridad
 
@@ -361,29 +439,51 @@ por *magic bytes*) · secretos solo en variables de entorno / GitHub Secrets · 
 buckets S3 privados con OAC · IMDSv2 · usuario de BD de aplicación con privilegios limitados. Ver
 [docs/arquitectura.md#seguridad](docs/arquitectura.md#seguridad).
 
-## Integrantes
+## Autor y modalidad
 
-| Integrante | Usuario GitHub | Rol en el proyecto |
-|---|---|---|
-| `[NOMBRE_INTEGRANTE_1]` | `[@usuario1]` | `[Rol: p. ej. Frontend]` |
-| `[NOMBRE_INTEGRANTE_2]` | `[@usuario2]` | `[Rol: p. ej. Backend]` |
-| `[NOMBRE_INTEGRANTE_3]` | `[@usuario3]` | `[Rol: p. ej. Base de datos]` |
-| `[NOMBRE_INTEGRANTE_4]` | `[@usuario4]` | `[Rol: p. ej. AWS / DevOps]` |
+Proyecto **individual** — Universidad de la Costa, cuarto semestre.
 
-> Completar con los datos reales del equipo. Docente: `[NOMBRE_DOCENTE]` · Curso: `[NOMBRE_CURSO]` · Institución: `[INSTITUCIÓN]`.
+| Campo | Valor |
+|---|---|
+| Autor | `[Nombre completo — pendiente]` (GitHub: [@dylanfuentes0330](https://github.com/dylanfuentes0330)) |
+| Programa / curso / docente | `[pendientes]` |
+
+Responsabilidades, evidencias y criterios de la rúbrica que requieren adaptación por ser individual:
+[docs/MODALIDAD_INDIVIDUAL.md](docs/MODALIDAD_INDIVIDUAL.md). El desarrollo contó con asistencia de IA (Claude Code), lo
+que se refleja tal cual en el historial de Git.
+
+## Recursos adicionales
+
+| Recurso | Para qué |
+|---|---|
+| [SUSTENTACION/EXPLICACION_REACT.md](SUSTENTACION/EXPLICACION_REACT.md) | Componentes, rutas y configuración del frontend (Vite, sin `next.config`) |
+| [SUSTENTACION/EXPLICACION_BACKEND.md](SUSTENTACION/EXPLICACION_BACKEND.md) | API, reglas de negocio y seguridad |
+| [SUSTENTACION/EXPLICACION_CICD.md](SUSTENTACION/EXPLICACION_CICD.md) | Workflows YAML y función de cada job |
+| [SUSTENTACION/EXPLICACION_AWS.md](SUSTENTACION/EXPLICACION_AWS.md) | Servicios AWS, recorrido de una petición y seguridad |
+| [docs/guia-aws-academy.md](docs/guia-aws-academy.md) | Guía paso a paso para desplegar en el Learner Lab |
+| [docs/guia-git-github.md](docs/guia-git-github.md) | Flujo de ramas, commits y Pull Requests |
+| [docs/arquitectura.md](docs/arquitectura.md) · [docs/diagramas](docs/diagramas) | Arquitectura y diagramas (Mermaid) |
+| [docs/evidencias/despliegue-aws.md](docs/evidencias/despliegue-aws.md) | Evidencias del despliegue real |
+| [docs/evidencias/evidencias-github.md](docs/evidencias/evidencias-github.md) | PR, ramas, commits y ejecuciones de CI/CD |
+| [docs/postman](docs/postman) | Colección Postman de la API |
+| [docs/DOMINIO_PERSONALIZADO.md](docs/DOMINIO_PERSONALIZADO.md) | Estado y pasos del dominio propio |
+| [AUDITORIA_TECNICA.md](AUDITORIA_TECNICA.md) · [ESTADO_FINAL.md](ESTADO_FINAL.md) | Auditoría y estado de entrega |
+| [docs/CHECKLIST_RUBRICA_CORTE3.md](docs/CHECKLIST_RUBRICA_CORTE3.md) | Cumplimiento de la rúbrica del corte 3 |
+| Documentación oficial | [React](https://react.dev) · [Vite](https://vite.dev) · [Express](https://expressjs.com) · [Prisma](https://www.prisma.io/docs) · [GitHub Actions](https://docs.github.com/actions) · [AWS CloudFormation](https://docs.aws.amazon.com/cloudformation/) · [Let's Encrypt](https://letsencrypt.org/docs/) |
 
 ## Estado del proyecto
 
 | Componente | Estado |
 |---|---|
-| Frontend React (10 páginas + panel) | ✅ Desarrollado y probado localmente |
-| Backend API REST + reglas de negocio | ✅ Desarrollado y probado localmente (MySQL 8) |
-| Base de datos (modelo, migraciones, seed) | ✅ Desarrollado |
-| Pruebas (unitarias, API, componentes, E2E, Postman) | ✅ Ejecutadas con éxito en local |
+| Frontend React (10 páginas + panel) | ✅ Desarrollado, probado y desplegado (Nginx en EC2) |
+| Backend API REST + reglas de negocio | ✅ Desarrollado, probado (50 pruebas, MySQL 8.4) y desplegado |
+| Base de datos (modelo, migraciones, seed) | ✅ Desarrollada y migrada en RDS MySQL 8.4.11 |
+| Pruebas (unitarias, API, componentes, E2E, Postman) | ✅ En local y en CI; E2E y verificación técnica también contra producción |
 | Workflows CI/CD | ✅ CI en verde en GitHub; Deploy #3 en verde (backend y frontend publicados en AWS) |
 | Infraestructura AWS (CloudFormation, scripts) | ✅ Desplegada en Learner Lab (`CREATE_COMPLETE`, modo sin CloudFront por bloqueo del laboratorio) |
 | Aplicación en producción | ✅ <https://52-54-96-26.sslip.io> — E2E 18/18 y verificación técnica 11/11 contra la URL pública |
-| Dominio personalizado | ⏳ Sin dominio propio (se usa `sslip.io`); pasos documentados para conectar uno |
+| Control de acceso | ✅ Landing como primera vista; `/panel` exige login y rol; API 401/403 |
+| Dominio personalizado | ⏳ Pendiente: requiere reclamar un dominio (Student Pack); todo lo técnico está preparado y probado |
 | Pasarela de pagos | ❌ Fuera de alcance del MVP (planes sin cobro) |
 | Múltiples usuarios por negocio (Plan Profesional) | ❌ Mejora futura |
 

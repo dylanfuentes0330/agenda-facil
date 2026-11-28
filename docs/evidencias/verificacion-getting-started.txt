@@ -1,0 +1,32 @@
+# Verificación de Getting Started en un clon limpio (2026-11-28T04:54:45Z)
+Sistema: Windows 11, Node v24.21.0, npm 11.19.0, MySQL 8.4 local
+
+$ git clone https://github.com/dylanfuentes0330/agenda-facil.git && cd agenda-facil
+commit clonado: 0697c8e Merge pull request #10 from dylanfuentes0330/develop
+
+$ npm run install:all
+  added 324 packages, and audited 325 packages in 29s
+  8 vulnerabilities (1 moderate, 5 high, 2 critical)
+  added 363 packages, and audited 364 packages in 36s
+  3 vulnerabilities (1 moderate, 2 critical)
+
+$ npm run lint
+  OK: ESLint sin errores en backend y frontend
+
+$ npm run build
+  OK
+  ✔ Generated Prisma Client (v6.19.3) to .\node_modules\@prisma\client in 151ms
+  dist/index.html                   0.69 kB │ gzip:   0.41 kB
+  dist/assets/index-wPZ0Pcyq.css   26.87 kB │ gzip:   6.13 kB
+  dist/assets/index-D0sfUHxw.js   354.69 kB │ gzip: 109.57 kB
+  ✓ built in 5.64s
+
+$ npm test   (backend/.env.test.local con la clave local de MySQL, ignorado por Git)
+   Test Files  6 passed (6)
+        Tests  50 passed (50)
+   Test Files  2 passed (2)
+        Tests  10 passed (10)
+
+Resultado: las instrucciones del README (clonar, instalar, lint, build y pruebas) funcionan en un clon limpio.
+
+Nota: los avisos de npm audit corresponden a dependencias de desarrollo (Vitest) y a la CLI de Prisma; solo se corrigen con versiones mayores y están documentados como H-17 en AUDITORIA_TECNICA.md. npm audit --omit=dev del frontend: 0 vulnerabilidades.
