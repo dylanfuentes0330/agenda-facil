@@ -1,30 +1,34 @@
-# Matriz de cumplimiento de requisitos académicos
+# Matriz de cumplimiento (rúbrica)
 
-> **Importante:** no se recibió la rúbrica oficial de evaluación. Esta matriz relaciona los **objetivos académicos
-> indicados en el enunciado del proyecto** con evidencias concretas. Cuando el equipo disponga de la rúbrica,
-> debe contrastarla con esta tabla y ajustar los criterios.
+> **No se pudo verificar la rúbrica oficial:** no se adjuntó ningún archivo de rúbrica (el único adjunto disponible es la
+> propuesta original). Los criterios provienen del **objetivo académico del enunciado del proyecto**. Al recibir la
+> rúbrica oficial, contrastar criterio por criterio y ajustar esta tabla.
+>
+> Estados: **COMPLETADA Y VERIFICADA** · **CONFIGURADA PERO NO EJECUTADA** · **PENDIENTE DE ACCESO** ·
+> **PENDIENTE DE INTERVENCIÓN HUMANA** · **BLOQUEADA**. Fecha de corte: 2026-11-27.
 
-Estados: **COMPLETADO** · **PARCIAL** · **PENDIENTE** · **BLOQUEADO**
-
-| # | Requisito académico | Estado | Evidencia concreta | Acción pendiente (equipo) |
-|---|---|---|---|---|
-| 1 | Documento actualizado con arquitectura y normas APA 7 | PARCIAL | `ENTREGA_FINAL/01_Documento_Academico/Agenda_Facil_Documento_APA.docx` y `.pdf` | Completar portada (integrantes, docente, curso), insertar capturas de AWS, verificar cada enlace de referencias |
-| 2 | Perfiles personales de GitHub completos | PENDIENTE | Guía: `docs/guia-git-github.md` §1 | Cada integrante completa su perfil y toma captura |
-| 3 | Trabajo colaborativo: commits, ramas y Pull Requests | PARCIAL | Repositorio con `main`, `develop` y 5 ramas `feature/*`; plantillas de PR/issues; `CONTRIBUTING.md` | Publicar en GitHub; cada integrante hace commits y PRs propios (el historial inicial fue generado con IA y así está identificado) |
-| 4 | Configuración y comprensión de CI/CD | PARCIAL | `.github/workflows/ci.yml`, `deploy.yml`; comandos ejecutados localmente con éxito; diagrama `05-pipeline-cicd.png` | Primera ejecución real en GitHub Actions y captura; configurar secretos para Deploy |
-| 5 | Documentación técnica en README.md | COMPLETADO | `README.md` (instalación, variables, migraciones, pruebas, API, AWS, CI/CD, dominio, capturas, estado) | Completar tabla de integrantes y badge `OWNER/REPO` |
-| 6 | Aplicación funcional | COMPLETADO (local) | 46 pruebas backend, 10 frontend, E2E 18/18, Newman 55 aserciones; capturas en `docs/capturas` | — |
-| 7 | Aplicación desplegada en AWS | PENDIENTE | Plantilla CloudFormation validada (`cfn-lint`), scripts y guía `docs/guia-aws-academy.md` | Ejecutar el despliegue en Learner Lab y capturar evidencias |
-| 8 | Accesible mediante dominio personalizado | PENDIENTE | Parámetros `DomainName`/`AcmCertificateArn`/`HostedZoneId`; guía §7 | Adquirir dominio, emitir certificado ACM, configurar DNS |
-| 9 | Comprensión de React | COMPLETADO | Frontend React 19 (componentes reutilizables, contextos, rutas protegidas, hooks); sección del documento | Preparar explicación oral |
-| 10 | Comprensión de configuraciones (variables, Vite, Express, Prisma, Nginx, systemd) | COMPLETADO | `.env.example`, `vite.config.js`, `app.js`, `schema.prisma`, `bootstrap-ec2.sh` | — |
-| 11 | Comprensión de la arquitectura AWS Academy | PARCIAL | `docs/arquitectura.md`, diagrama `01-arquitectura-aws.png`, limitaciones documentadas | Validar en el laboratorio real las limitaciones listadas |
-| 12 | Uso de los servicios propuestos (EC2, RDS, S3, CloudFront, Route 53, IAM) | PARCIAL | Todos definidos en la plantilla; S3 integrado en el código (logos) | Desplegar; IAM de mínimo privilegio solo aplicable fuera de Learner Lab |
-| 13 | Funcionalidades del negocio (7) | COMPLETADO | `docs/arquitectura.md` RF-01 a RF-07; E2E | — |
-| 14 | Funcionalidades del cliente (5) | COMPLETADO | RF-08 a RF-12; E2E | — |
-| 15 | Prevención de reservas duplicadas | COMPLETADO | Transacción + `FOR UPDATE`; prueba de 10 peticiones concurrentes; prueba de mutación | — |
-| 16 | Aislamiento multi-tenant | COMPLETADO | `backend/tests/api/isolation.test.js`; carpeta 5 de Postman | — |
-| 17 | Seguridad (hash, validación, roles, rate limit, secretos, HTTPS, RDS/S3 privados) | PARCIAL | Implementado y probado en código; HTTPS/RDS/S3 definidos en la plantilla | Verificar en AWS desplegado |
-| 18 | Modelo de negocio (planes y prueba gratuita, sin cobros simulados) | COMPLETADO | Tabla `plans`, límites aplicados, `trialEndsAt`; pruebas de límite de plan | Definir precios reales si el curso lo requiere |
-| 19 | Pruebas y colección Postman | COMPLETADO | `docs/evidencias/*`, `docs/postman/*` | — |
-| 20 | Análisis de costos | PARCIAL | Sección del documento con la estimación original identificada como tal | Recalcular en AWS Pricing Calculator y adjuntar enlace/captura |
+| Criterio | Evidencia | Estado | Pendiente |
+|---|---|---|---|
+| Documento actualizado con arquitectura | `docs/documento-academico/Agenda_Facil_Documento_APA.docx` y `.pdf` (21 secciones + anexo, 9 tablas, 19 figuras) contrastado con el código | COMPLETADA Y VERIFICADA (contenido técnico) | — |
+| Normas APA 7 en el documento | Portada, numeración, títulos por nivel, tablas/figuras APA, referencias con sangría francesa; verificación automática de numeración y citas | PENDIENTE DE INTERVENCIÓN HUMANA | Completar portada (integrantes, curso, docente, fecha) y verificar cada enlace de referencias |
+| Perfiles personales de GitHub completos | Guía `docs/guia-git-github.md` §1 | PENDIENTE DE INTERVENCIÓN HUMANA | Cada integrante completa su perfil y toma captura |
+| Trabajo colaborativo: commits | Historial con autor “Claude Code (asistente IA)” (no acredita a integrantes) | PENDIENTE DE INTERVENCIÓN HUMANA | Commits propios de cada integrante (tareas en `ESTADO_FINAL.md`) |
+| Trabajo colaborativo: ramas | `main`, `develop`, 5 `feature/*`, `fix/auditoria-final` (local) | CONFIGURADA PERO NO EJECUTADA | Publicar en GitHub |
+| Trabajo colaborativo: Pull Requests | Plantilla de PR, protección de ramas por script | PENDIENTE DE ACCESO | Repositorio en GitHub; PRs abiertos y revisados por integrantes |
+| Configuración de CI/CD | `ci.yml` (4 jobs), `deploy.yml` (con rollback); actionlint 0 hallazgos; comandos ejecutados en clon limpio | CONFIGURADA PERO NO EJECUTADA | Primera ejecución en GitHub Actions y captura |
+| Comprensión de CI/CD | `SUSTENTACION/EXPLICACION_CICD.md`, preguntas 31–35 | COMPLETADA Y VERIFICADA (material) | Ensayar la explicación |
+| Documentación técnica en README.md | `README.md` contrastado con el código en la auditoría | COMPLETADA Y VERIFICADA | Completar tabla de integrantes y `OWNER/REPO` |
+| Aplicación funcional | 48 + 10 pruebas, E2E 18/18, Newman 55/55, re-ejecutadas en la auditoría (`docs/evidencias/`) | COMPLETADA Y VERIFICADA (entorno local) | — |
+| Aplicación desplegada en AWS | CloudFormation validada; scripts de despliegue/rollback ensayados en simulación (5/5) | PENDIENTE DE ACCESO | Learner Lab activo y autorización de uso de créditos |
+| Acceso mediante dominio personalizado | Parámetros `DomainName`/`AcmCertificateArn`/`HostedZoneId`, guía §7 | PENDIENTE DE INTERVENCIÓN HUMANA | Obtener dominio (sin compra por parte del asistente), certificado ACM y DNS |
+| Comprensión de React | Código + `SUSTENTACION/EXPLICACION_REACT.md` + preguntas 5–9 | COMPLETADA Y VERIFICADA (material) | Ensayar |
+| Comprensión de configuraciones | `.env.example`, `vite.config.js`, `app.js`, `schema.prisma`, `bootstrap-ec2.sh` explicados en `SUSTENTACION/` | COMPLETADA Y VERIFICADA (material) | Ensayar |
+| Comprensión de la arquitectura AWS Academy | `SUSTENTACION/EXPLICACION_AWS.md`, diagramas, limitaciones | COMPLETADA Y VERIFICADA (material) | Confirmar limitaciones en el laboratorio real |
+| Servicios propuestos: EC2, RDS, S3, CloudFront, Route 53, IAM | Definidos en la plantilla; S3 integrado en el código | CONFIGURADA PERO NO EJECUTADA | Desplegar; el rol IAM de mínimo privilegio es BLOQUEADA en Learner Lab (documentado) |
+| Funcionalidades del negocio (7) y del cliente (5) | E2E + pruebas de API | COMPLETADA Y VERIFICADA (local) | — |
+| Prevención de reservas duplicadas | Prueba de 10 peticiones concurrentes + prueba de mutación | COMPLETADA Y VERIFICADA | — |
+| Aislamiento multi-tenant | 6 pruebas + Postman carpeta 5 | COMPLETADA Y VERIFICADA | — |
+| Seguridad | Pruebas de API; auditoría (`AUDITORIA_TECNICA.md`) | COMPLETADA Y VERIFICADA en código; CONFIGURADA PERO NO EJECUTADA en AWS | Verificar HTTPS/RDS/S3 privados tras desplegar |
+| Pruebas y colección Postman | `docs/evidencias/`, `docs/postman/` | COMPLETADA Y VERIFICADA | Ejecutar Newman contra producción tras desplegar |
+| Análisis de costos | Sección 18 del documento (estimación original identificada como tal) | PENDIENTE DE INTERVENCIÓN HUMANA | Recalcular en AWS Pricing Calculator |
+| Material de sustentación | `SUSTENTACION/` (7 archivos, 38 preguntas) | COMPLETADA Y VERIFICADA | Ensayar la demostración |

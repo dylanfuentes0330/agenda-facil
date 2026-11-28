@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: ci_root_password
           MYSQL_DATABASE: agenda_facil_test
@@ -81,13 +81,34 @@ jobs:
           path: frontend/dist
           retention-days: 7
 
+  infra:
+    name: Infraestructura (CloudFormation, scripts, workflows)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar validadores
+        run: pip install cfn-lint actionlint-py
+      - name: La plantilla generada coincide con su fuente
+        run: |
+          python3 infra/aws/cloudformation/build-template.py
+          git diff --exit-code infra/aws/cloudformation/agenda-facil.yaml
+      - name: cfn-lint (errores bloquean; advertencias documentadas se permiten)
+        run: cfn-lint --non-zero-exit-code error infra/aws/cloudformation/agenda-facil.yaml
+      - name: ShellCheck
+        run: shellcheck infra/aws/ec2/*.sh infra/aws/scripts/*.sh scripts/github/*.sh
+      - name: actionlint
+        run: actionlint -shellcheck=shellcheck .github/workflows/*.yml
+
   e2e:
     name: E2E en navegador (flujo MVP)
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: ci_root_password
           MYSQL_DATABASE: agenda_facil
@@ -124,7 +145,12 @@ jobs:
         run: |
           (cd backend && nohup npm start > ../backend.log 2>&1 &)
           (cd frontend && nohup npx vite preview --port 4173 --strictPort > ../frontend.log 2>&1 &)
-          for i in $(seq 1 30); do curl -sf http://localhost:4173/api/health && break; sleep 2; done
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:4173/api/health; then exit 0; fi
+            sleep 2
+          done
+          echo "::error::La API o el frontend no iniciaron"; cat backend.log frontend.log
+          exit 1
       - name: Ejecutar flujo E2E
         run: BASE_URL=http://localhost:4173 node e2e/mvp-flow.cjs
       - name: Guardar capturas y registros

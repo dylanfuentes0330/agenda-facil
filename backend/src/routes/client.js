@@ -45,6 +45,7 @@ clientRouter.post(
       startAt,
       notes,
       enforceGrid: true,
+      limitActive: true,
       resolveClient: (tx) => resolveClientRecord(tx, business, req.user),
     });
     res.status(201).json({ reservation: serializeReservation({ ...reservation, business }) });

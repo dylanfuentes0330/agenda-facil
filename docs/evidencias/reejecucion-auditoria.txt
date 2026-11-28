@@ -1,0 +1,39 @@
+# Re-ejecución completa sobre clon limpio — 2026-11-27T01:27:48Z
+Commit: 7e1e051 (rama fix/auditoria-final)
+## backend: npm ci
+added 324 packages in 7s
+## backend: lint
+sin hallazgos
+## frontend: npm ci
+added 363 packages in 6s
+## frontend: lint
+sin hallazgos
+## backend: build
+Build OK: 29 módulos verificados.
+## backend: test
+ ✓ tests/api/reservations.test.js (12 tests) 802ms
+ ✓ tests/api/business.test.js (8 tests) 608ms
+ ✓ tests/api/auth.test.js (12 tests) 535ms
+ ✓ tests/api/isolation.test.js (6 tests) 297ms
+ ✓ tests/unit/availability.test.js (5 tests) 4ms
+ ✓ tests/unit/time.test.js (5 tests) 22ms
+ Test Files  6 passed (6)
+      Tests  48 passed (48)
+## frontend: test
+ ✓ src/__tests__/utils.test.js (4 tests) 28ms
+ ✓ src/__tests__/components.test.jsx (6 tests) 474ms
+ Test Files  2 passed (2)
+      Tests  10 passed (10)
+## frontend: build
+✓ built in 2.28s
+## infraestructura
+agenda-facil.yaml generado
+plantilla sincronizada
+cfn-lint: 0 errores
+shellcheck: 0 hallazgos
+actionlint: 0 hallazgos
+## E2E
+Total: 18/18 pasos correctos
+## Newman
+│                requests │                42 │                 0 │
+│              assertions │                55 │                 0 │

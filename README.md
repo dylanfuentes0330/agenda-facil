@@ -77,6 +77,7 @@ disponibilidad y reservan en línea. El sistema **impide reservas incompatibles*
 - No se permiten reservas en el pasado, en días cerrados, fuera del horario ni a más de 90 días.
 - Las reservas en línea deben coincidir con las franjas del negocio (intervalo configurable de 10–60 min).
 - El cliente solo puede cancelar hasta *N* horas antes (configurable por el negocio, 0–168 h).
+- Anti-abuso: un cliente puede tener como máximo **5 reservas futuras confirmadas** en un mismo negocio (el negocio no tiene ese tope al agendar).
 - **Aislamiento multi-tenant**: el negocio se obtiene siempre del usuario autenticado; un negocio nunca puede leer ni modificar datos de otro.
 - Límites por plan: Básico (10 servicios, 300 clientes), Profesional (ilimitado + estadísticas de rendimiento).
 
@@ -148,7 +149,7 @@ agenda-facil/
 ## Requisitos previos
 
 - **Node.js 22** (mínimo 20) y npm 10.
-- **MySQL 8.0** local (o Docker: `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8.0`).
+- **MySQL 8.4** local, la misma versión principal que RDS y CI (o Docker: `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8.4`).
 - Git. Para desplegar: AWS CLI v2 y acceso a AWS Academy Learner Lab.
 
 ## Instalación y ejecución local
@@ -163,10 +164,10 @@ git clone https://github.com/OWNER/REPO.git agenda-facil
 cd agenda-facil && npm run install:all
 ```
 
-2. Crear la base de datos y un usuario local (ajusta la contraseña):
+2. Crear la base de datos y un usuario **solo para desarrollo local**. Sustituye `<CLAVE_LOCAL>` por una contraseña elegida por ti, que deberás repetir en `DATABASE_URL` de `backend/.env` y `backend/.env.test.local` (ambos ignorados por Git); no la publiques. El permiso sobre `agenda\_facil\_test\_%` es necesario porque las pruebas crean una base temporal `agenda_facil_test_<marca>_<pid>` en cada ejecución:
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_test; CREATE USER 'agenda'@'localhost' IDENTIFIED BY 'cambia_esta_clave'; GRANT ALL ON agenda_facil.* TO 'agenda'@'localhost'; GRANT ALL ON agenda_facil_test.* TO 'agenda'@'localhost'; GRANT ALL ON \`agenda\\_facil\\_test\\_%\`.* TO 'agenda'@'localhost'; GRANT CREATE ON *.* TO 'agenda'@'localhost';"
+mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_test; CREATE USER 'agenda'@'localhost' IDENTIFIED BY '<CLAVE_LOCAL>'; GRANT ALL ON agenda_facil.* TO 'agenda'@'localhost'; GRANT ALL ON agenda_facil_test.* TO 'agenda'@'localhost'; GRANT ALL ON \`agenda\\_facil\\_test\\_%\`.* TO 'agenda'@'localhost'; GRANT CREATE ON *.* TO 'agenda'@'localhost';"
 ```
 
 3. Configurar variables de entorno:
@@ -175,7 +176,13 @@ mysql -u root -p -e "CREATE DATABASE agenda_facil; CREATE DATABASE agenda_facil_
 cp backend/.env.example backend/.env
 ```
 
-Edita `backend/.env` (`DATABASE_URL`, `JWT_SECRET`). Ajusta también `backend/.env.test` si tu usuario/clave difieren.
+Edita `backend/.env` (`DATABASE_URL`, `JWT_SECRET`). Para las pruebas, crea `backend/.env.test.local` (ignorado por Git; nunca lo subas) con tu contraseña real:
+
+```bash
+DATABASE_URL="mysql://agenda:<CLAVE_LOCAL>@127.0.0.1:3306/agenda_facil_test"
+```
+
+Ese archivo tiene prioridad sobre `backend/.env.test`, que está versionado y solo contiene el marcador `CLAVE_LOCAL` y la configuración de pruebas compartida (las variables definidas en el sistema o en CI tienen prioridad sobre ambos). Si la contraseña contiene caracteres especiales, codifícalos para URL (p. ej. `@` → `%40`). Un error `P1000` al ejecutar las pruebas indica que la contraseña de `.env.test.local` no coincide con la de MySQL.
 
 4. Migraciones y datos de referencia (planes):
 
@@ -239,13 +246,15 @@ día y negocio, cliente único por correo y negocio, índices `(business_id, sta
 
 ## Pruebas
 
-| Tipo | Comando | Resultado verificado (27-nov-2026, local) |
+| Tipo | Comando | Resultado verificado (27-nov-2026, local; reverificado en la auditoría) |
 |---|---|---|
-| Backend: unitarias + API (MySQL real) | `npm test --prefix backend` | **46/46** |
+| Backend: unitarias + API (MySQL real) | `npm test --prefix backend` | **48/48** |
 | Frontend: utilidades y componentes | `npm test --prefix frontend` | **10/10** |
 | E2E en navegador (flujo MVP + responsive) | `npm run e2e` (con la app levantada) | **18/18 pasos** |
 | Colección Postman (Newman) | `npx newman run docs/postman/Agenda-Facil.postman_collection.json -e docs/postman/Agenda-Facil-local.postman_environment.json` | **42 peticiones, 55 aserciones, 0 fallos** |
 | Lint | `npm run lint` | Sin errores |
+| Infraestructura | `cfn-lint`, `shellcheck`, `actionlint` (también en CI) | 0 errores (1 advertencia documentada de cfn-lint) |
+| Simulación de despliegue en EC2 (release, migraciones, health check, rollback) | ver `docs/evidencias/simulacion-despliegue-ec2.md` | 5/5 escenarios |
 
 Las pruebas del backend crean una base de datos temporal **nueva** en cada ejecución y la eliminan al final (nunca
 borran datos existentes). Incluyen: registro, login, roles, servicios, horarios, disponibilidad, reservas,
@@ -283,11 +292,12 @@ Colección lista para importar: [`docs/postman`](docs/postman).
 
 | Workflow | Disparador | Etapas |
 |---|---|---|
-| [`ci.yml`](.github/workflows/ci.yml) | PR y push a `develop`/`main` | Backend: `npm ci` → lint → build → pruebas con MySQL 8 (servicio). Frontend: `npm ci` → lint → pruebas → build (artefacto). E2E: Playwright del flujo MVP (artefacto con capturas). |
+| [`ci.yml`](.github/workflows/ci.yml) | PR y push a `develop`/`main` | Backend: `npm ci` → lint → build → pruebas con MySQL 8 (servicio). Frontend: `npm ci` → lint → pruebas → build (artefacto). Infraestructura: cfn-lint, ShellCheck, actionlint. E2E: Playwright del flujo MVP (artefacto con capturas). |
 | [`deploy.yml`](.github/workflows/deploy.yml) | CI exitoso en `main`, o manual con `ref` | Backend → EC2 por SSH (release nueva, migraciones, health check, **rollback automático**). Frontend → S3 + invalidación de CloudFront. Solo si la variable `AWS_DEPLOY_ENABLED` = `true`. |
 
 **Rollback**: (1) automático si el health check falla tras desplegar; (2) `Actions → Deploy → Run workflow` con el
-commit/tag anterior en `ref`; (3) en el servidor: `sudo bash /tmp/agenda-deploy/infra/aws/ec2/rollback.sh`.
+commit/tag anterior en `ref`; (3) en el servidor: `sudo bash /tmp/agenda-deploy/infra/aws/ec2/rollback.sh` (solo considera
+releases marcadas como sanas con `.deploy-ok`). Ensayado localmente: ver `docs/evidencias/simulacion-despliegue-ec2.md`.
 Secretos y variables necesarios: ver encabezado de [`deploy.yml`](.github/workflows/deploy.yml) y
 [docs/guia-aws-academy.md](docs/guia-aws-academy.md).
 
@@ -360,8 +370,8 @@ buckets S3 privados con OAC · IMDSv2 · usuario de BD de aplicación con privil
 | Backend API REST + reglas de negocio | ✅ Desarrollado y probado localmente (MySQL 8) |
 | Base de datos (modelo, migraciones, seed) | ✅ Desarrollado |
 | Pruebas (unitarias, API, componentes, E2E, Postman) | ✅ Ejecutadas con éxito en local |
-| Workflows CI/CD | 🟡 Configurados y validados (sintaxis); pendiente primera ejecución en GitHub |
-| Infraestructura AWS (CloudFormation, scripts) | 🟡 Preparada y validada con `cfn-lint`; **no desplegada** |
+| Workflows CI/CD | 🟡 Configurados y validados con actionlint; pendiente primera ejecución en GitHub |
+| Infraestructura AWS (CloudFormation, scripts) | 🟡 Validada con `cfn-lint`; scripts de despliegue/rollback ensayados en simulación local; **no desplegada** |
 | Dominio personalizado | ⏳ Pendiente (el equipo debe adquirir/conectar un dominio) |
 | Pasarela de pagos | ❌ Fuera de alcance del MVP (planes sin cobro) |
 | Múltiples usuarios por negocio (Plan Profesional) | ❌ Mejora futura |

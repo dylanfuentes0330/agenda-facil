@@ -47,7 +47,7 @@ protect() {
 }
 JSON
 }
-CHECKS='["Backend (lint, build, pruebas)", "Frontend (lint, pruebas, build)"]'
+CHECKS='["Backend (lint, build, pruebas)", "Frontend (lint, pruebas, build)", "Infraestructura (CloudFormation, scripts, workflows)"]'
 protect main "$CHECKS" 1
 protect develop "$CHECKS" 0
 
