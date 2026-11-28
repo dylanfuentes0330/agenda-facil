@@ -3,12 +3,10 @@
 > vitest run
 
 
- RUN  v3.2.7 /home/user/agenda-facil/backend
+ RUN  v3.2.7 C:/proyectos/agenda-facil-transferencia/agenda-facil/backend
 
 Script executed successfully.
-Environment variables loaded from .env
-Prisma schema loaded from prisma/schema.prisma
-Datasource "db": MySQL database "agenda_facil_test_1795742930438_15898" at "localhost:3306"
+Prisma schema loaded from prisma\schema.prisma
 
 1 migration found in prisma/migrations
 
@@ -22,16 +20,17 @@ migrations/
       
 All migrations have been successfully applied.
 Planes listos: BASICO, PROFESIONAL
- ✓ tests/api/reservations.test.js (12 tests) 751ms
- ✓ tests/api/business.test.js (8 tests) 556ms
- ✓ tests/api/auth.test.js (12 tests) 566ms
- ✓ tests/api/isolation.test.js (6 tests) 303ms
- ✓ tests/unit/time.test.js (5 tests) 24ms
- ✓ tests/unit/availability.test.js (5 tests) 5ms
+ ✓ tests/api/reservations.test.js (12 tests) 1387ms
+ ✓ tests/api/business.test.js (10 tests) 1020ms
+ ✓ tests/api/auth.test.js (12 tests) 832ms
+   ✓ Registro e inicio de sesión > aplica rate limiting en los endpoints de autenticación  349ms
+ ✓ tests/api/isolation.test.js (6 tests) 502ms
+ ✓ tests/unit/time.test.js (5 tests) 39ms
+ ✓ tests/unit/availability.test.js (5 tests) 6ms
 
  Test Files  6 passed (6)
-      Tests  48 passed (48)
-   Start at  01:28:50
-   Duration  7.41s (transform 130ms, setup 46ms, collect 1.63s, tests 2.20s, environment 1ms, prepare 281ms)
+      Tests  50 passed (50)
+   Start at  20:20:42
+   Duration  29.42s (transform 471ms, setup 159ms, collect 5.99s, tests 3.79s, environment 1ms, prepare 1.32s)
 
 Script executed successfully.

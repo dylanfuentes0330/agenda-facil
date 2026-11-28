@@ -1,0 +1,14 @@
+# Verificación de producción (2026-11-28T01:18:31.275Z)
+URL: https://52-54-96-26.sslip.io
+
+[OK]   Registro de negocio en RDS → 201
+[OK]   Subida de logo a S3 → 200, URL prefirmada de S3: sí
+[OK]   Descarga del logo por URL prefirmada → 200 image/png
+[OK]   El mismo objeto sin firma (bucket privado) → 403
+[OK]   Horarios con 30 000 filas → 400, respuesta de 244 bytes (H-16)
+[OK]   Panel sin token → 401
+[OK]   Cliente intentando abrir el panel del negocio → 403
+[OK]   Frontend: 200; HSTS="max-age=15552000", nosniff="nosniff", XFO="SAMEORIGIN", server="nginx"
+[OK]   Ruta interna de la SPA (/panel/agenda) → 200
+[OK]   /api/health → {"status":"ok","database":"ok","time":"2026-11-28T01:18:31.052Z","version":"dev"}
+[OK]   HTTP → 301 https://52-54-96-26.sslip.io/

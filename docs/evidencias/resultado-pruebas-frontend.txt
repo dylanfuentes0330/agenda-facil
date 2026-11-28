@@ -3,13 +3,15 @@
 > vitest run
 
 
- RUN  v3.2.7 /home/user/agenda-facil/frontend
+ RUN  v3.2.7 C:/proyectos/agenda-facil-transferencia/agenda-facil/frontend
 
- ✓ src/__tests__/utils.test.js (4 tests) 19ms
- ✓ src/__tests__/components.test.jsx (6 tests) 408ms
+ ✓ src/__tests__/utils.test.js (4 tests) 114ms
+ ✓ src/__tests__/components.test.jsx (6 tests) 1327ms
+   ✓ Inicio de sesión > muestra el mensaje del servidor cuando las credenciales son incorrectas  499ms
+   ✓ Inicio de sesión > redirige al panel cuando inicia sesión un negocio  461ms
 
  Test Files  2 passed (2)
       Tests  10 passed (10)
-   Start at  01:28:59
-   Duration  1.33s (transform 173ms, setup 187ms, collect 390ms, tests 427ms, environment 570ms, prepare 118ms)
+   Start at  20:21:20
+   Duration  8.29s (transform 286ms, setup 2.30s, collect 1.01s, tests 1.44s, environment 7.04s, prepare 1.60s)
 

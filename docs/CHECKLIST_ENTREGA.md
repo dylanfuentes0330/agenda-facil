@@ -1,6 +1,6 @@
 # CHECKLIST DE ENTREGA — Agenda Fácil
 
-Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENTE** · **BLOQUEADO**.
+Fecha de corte: 2026-11-28. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENTE** · **BLOQUEADO**.
 “Equipo” = requiere intervención humana desde cuentas personales o de AWS.
 
 ## 1. Análisis y planificación
@@ -25,7 +25,7 @@ Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 | Tarea | Estado | Evidencia |
 |---|---|---|
 | 10 áreas del frontend, responsive, en español, sin botones decorativos | COMPLETADO | `frontend/src/pages`, E2E 18/18 |
-| API REST completa con roles, validación, errores, CORS, rate limit | COMPLETADO | `backend/src`, 48 pruebas |
+| API REST completa con roles, validación, errores, CORS, rate limit | COMPLETADO | `backend/src`, 50 pruebas |
 | Modelo de datos, migraciones, seed de planes, datos DEMO opcionales | COMPLETADO | `backend/prisma` |
 | Prevención de doble reserva (transacción + bloqueo) | COMPLETADO | prueba de concurrencia + prueba de mutación |
 | Aislamiento multi-tenant | COMPLETADO | `backend/tests/api/isolation.test.js` |
@@ -38,39 +38,39 @@ Fecha de corte: 2026-11-27. Estados: **COMPLETADO** · **PARCIAL** · **PENDIENT
 |---|---|---|
 | Hash, validación, SQLi, rutas protegidas, roles, multi-tenant, rate limit | COMPLETADO | Pruebas y `docs/arquitectura.md` §4 |
 | Secretos fuera de GitHub | COMPLETADO | `.gitignore`, GitHub Secrets en `deploy.yml` |
-| HTTPS, RDS privada, S3 privado, IAM mínimo privilegio | PARCIAL | Definido en CloudFormation/IAM; falta desplegar (IAM limitado por Learner Lab) |
+| HTTPS, RDS privada, S3 privado, IAM mínimo privilegio | PARCIAL | HTTPS (Let's Encrypt), RDS privada y S3 privado **desplegados y verificados**; IAM de mínimo privilegio no aplicable en Learner Lab (`LabInstanceProfile`) |
 
 ## 7. Git y GitHub
 | Tarea | Estado | Evidencia |
 |---|---|---|
 | Repositorio local con `main`, `develop`, 5 ramas `feature/*`, tag `v1.0.0-mvp` | COMPLETADO | `git branch -a`, `git log --graph` |
 | `.gitignore`, README, CONTRIBUTING, LICENSE, plantillas PR/issues, Dependabot | COMPLETADO | Raíz y `.github/` |
-| Publicar en GitHub | PENDIENTE (Equipo) | `scripts/github/publicar-en-github.sh` |
+| Publicar en GitHub | COMPLETADO | <https://github.com/dylanfuentes0330/agenda-facil> (`main` protegida) |
 | Perfiles completos, commits y PRs de cada integrante | PENDIENTE (Equipo) | `docs/guia-git-github.md` |
 
 ## 8. CI/CD
 | Tarea | Estado | Evidencia |
 |---|---|---|
 | Workflow CI (lint, pruebas, build, E2E) | PARCIAL | `ci.yml`; comandos ejecutados en clon limpio; sin ejecución en GitHub aún |
-| Workflow Deploy con secretos, condiciones y rollback | PARCIAL | `deploy.yml`, `infra/aws/ec2/rollback.sh`; requiere AWS |
-| Evidencia de pipeline en verde | PENDIENTE (Equipo) | Captura de *Actions* tras el primer push |
+| Workflow Deploy con secretos, condiciones y rollback | COMPLETADO | Ejecutado contra AWS con entorno `production` protegido; ver `docs/evidencias/despliegue-aws.md` §4 |
+| Evidencia de pipeline en verde | PARCIAL | CI en verde en GitHub (enlaces en `docs/evidencias/despliegue-aws.md`); falta la captura de pantalla |
 
 ## 9–10. AWS Academy y dominio
 | Tarea | Estado | Evidencia |
 |---|---|---|
 | Plantilla CloudFormation (EC2, RDS, S3, CloudFront, Route 53) | COMPLETADO | Validada con `cfn-lint` (0 errores) |
 | Scripts de verificación, despliegue, publicación y limpieza | COMPLETADO | `infra/aws/scripts`, ShellCheck sin hallazgos |
-| Verificar servicios permitidos en el Learner Lab | PENDIENTE (Equipo) | `00-verificar-servicios.sh` |
-| Desplegar infraestructura y aplicación | PENDIENTE (Equipo) | `docs/guia-aws-academy.md` §3–6 |
-| Dominio personalizado + certificado ACM | PENDIENTE (Equipo) | Guía §7 (no se inventó ningún dominio) |
+| Verificar servicios permitidos en el Learner Lab | COMPLETADO | `docs/evidencias/verificacion-servicios.txt` (CloudFront bloqueado) |
+| Desplegar infraestructura y aplicación | COMPLETADO | <https://52-54-96-26.sslip.io> — `docs/evidencias/despliegue-aws.md` |
+| Dominio personalizado + certificado ACM | PENDIENTE (Equipo) | Sin dominio propio: se usa `sslip.io` con certificado de Let's Encrypt. Guía §7–8 |
 
 ## 11. Pruebas
 | Tarea | Estado | Evidencia |
 |---|---|---|
-| Backend 48/48, frontend 10/10, E2E 18/18, Newman 55/55 | COMPLETADO | `docs/evidencias/` |
+| Backend 50/50, frontend 10/10, E2E 18/18, Newman 55/55 | COMPLETADO | `docs/evidencias/` |
 | Diseño responsive verificado (móvil, tablet, escritorio) | COMPLETADO | E2E sin desbordamiento + capturas |
 | Colección Postman | COMPLETADO | `docs/postman/` |
-| Pruebas sobre el entorno desplegado | PENDIENTE (Equipo) | Ejecutar Newman con el entorno de producción |
+| Pruebas sobre el entorno desplegado | COMPLETADO | E2E 18/18 y `e2e/verificar-produccion.mjs` 11/11 contra la URL pública |
 
 ## 12–13. Documentación
 | Tarea | Estado | Evidencia |

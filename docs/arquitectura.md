@@ -98,7 +98,7 @@ transacción al crear o mover una reserva.
 | Secretos | `.env` ignorado; GitHub Secrets; `NoEcho` en CloudFormation | `.gitignore`, workflows |
 | Transporte | HTTPS en CloudFront (`redirect-to-https`/`https-only`, TLS 1.2+ con dominio propio); S3 deniega HTTP | Plantilla |
 | Exposición de la BD | RDS en subredes privadas, `PubliclyAccessible: false`, SG solo desde EC2 | Plantilla |
-| Exposición de EC2 | Puerto 80 solo desde la prefix list de CloudFront; SSH con llave; IMDSv2 | Plantilla |
+| Exposición de EC2 | Con CloudFront: puerto 80 solo desde su prefix list. Sin CloudFront (despliegue real): 80 → redirección a HTTPS y 443 con Let's Encrypt, HSTS. SSH con llave; IMDSv2 | Plantilla |
 | Mínimo privilegio | Usuario de BD de aplicación limitado a `agenda_facil`; políticas IAM objetivo | `infra/aws` |
 
 Riesgos residuales: tráfico CloudFront → EC2 por HTTP dentro de la red de AWS (mejora: certificado en el origen o ALB);
@@ -108,14 +108,14 @@ token en `localStorage` (mitigado con expiración corta); permisos amplios de `L
 
 | Elemento | Diseñado | Desarrollado | Probado | Desplegado en AWS |
 |---|---|---|---|---|
-| Frontend React | Sí | Sí | Sí (componentes + E2E local) | No |
-| API REST | Sí | Sí | Sí (48 pruebas + Newman) | No |
-| Modelo de datos y migraciones | Sí | Sí | Sí (MySQL 8 local) | No |
-| Prevención de doble reserva | Sí | Sí | Sí (10 peticiones concurrentes) | No |
-| CI (GitHub Actions) | Sí | Sí | Comandos ejecutados en clon limpio; actionlint sin hallazgos; sin ejecutar en GitHub | — |
-| Scripts de despliegue y rollback | Sí | Sí | Simulación local de 5 escenarios | No |
-| CD (deploy.yml) | Sí | Sí | actionlint; script remoto simulado | No |
-| CloudFormation (VPC, EC2, RDS, S3, CloudFront, Route 53) | Sí | Sí | Validada con `cfn-lint` (0 errores) | No |
-| Dominio personalizado | Sí | Configuración preparada | No | No |
+| Frontend React | Sí | Sí | Sí (componentes + E2E local y en producción) | Sí (Nginx en EC2) |
+| API REST | Sí | Sí | Sí (50 pruebas + Newman) | Sí (EC2, Node 22) |
+| Modelo de datos y migraciones | Sí | Sí | Sí (MySQL 8.4 local y RDS) | Sí (RDS MySQL 8.4.11, migración aplicada) |
+| Prevención de doble reserva | Sí | Sí | Sí (10 peticiones concurrentes; E2E en producción) | Sí |
+| CI (GitHub Actions) | Sí | Sí | Ejecutado en GitHub en cada PR/push (4 jobs en verde) | — |
+| Scripts de despliegue y rollback | Sí | Sí | Simulación local + despliegue real en EC2 | Sí |
+| CD (deploy.yml) | Sí | Sí | Ejecutado: backend correcto; frontend publicado (comprobación final corregida) | Sí |
+| CloudFormation (VPC, EC2, RDS, S3, CloudFront, Route 53) | Sí | Sí | `cfn-lint` + `CREATE_COMPLETE` | Sí, con `EnableCloudFront=false` (CloudFront bloqueado en el Learner Lab) |
+| Dominio personalizado | Sí | Configuración preparada | No | No (URL `sslip.io` con HTTPS de Let's Encrypt) |
 | Rol IAM de mínimo privilegio | Sí | Políticas JSON | No | No aplicable en Learner Lab |
 | Múltiples usuarios por negocio, pagos, notificaciones | Propuesto como mejora | No | No | No |

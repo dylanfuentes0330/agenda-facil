@@ -14,7 +14,7 @@ automática y repetible, con capacidad de volver atrás.
 ## Workflow `ci.yml` (Pull Requests y push a develop/main)
 | Job | Qué hace | Por qué |
 |---|---|---|
-| Backend | `npm ci` → lint → build (Prisma) → 48 pruebas contra un **contenedor MySQL 8** | Las reglas críticas (doble reserva, aislamiento) se prueban con una BD real |
+| Backend | `npm ci` → lint → build (Prisma) → 50 pruebas contra un **contenedor MySQL 8** | Las reglas críticas (doble reserva, aislamiento) se prueban con una BD real |
 | Frontend | `npm ci` → lint → 10 pruebas → `vite build` → guarda `dist` como artefacto | Garantiza que la interfaz compila y sus validaciones funcionan |
 | Infraestructura | cfn-lint (plantilla), ShellCheck (scripts), actionlint (workflows), plantilla sincronizada | Los errores de infraestructura se detectan antes de llegar a AWS |
 | E2E | Levanta API + frontend, instala Chromium y recorre el flujo MVP (18 pasos); guarda capturas | Verifica el sistema completo como lo usaría una persona |
