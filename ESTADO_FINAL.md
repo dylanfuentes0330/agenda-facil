@@ -1,67 +1,61 @@
 # ESTADO FINAL — Agenda Fácil
 
-Fecha de corte: **2026-11-27**. Este archivo dice exactamente qué está terminado (y cómo se verificó) y qué
+Fecha de corte: **2026-11-28**. Este archivo dice exactamente qué está terminado (y cómo se verificó) y qué
 necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURADA PERO NO EJECUTADA** ·
 **PENDIENTE DE ACCESO** · **PENDIENTE DE INTERVENCIÓN HUMANA** · **BLOQUEADA**.
+
+**Aplicación en producción: <https://52-54-96-26.sslip.io>** (solo responde con la sesión del Learner Lab iniciada).
 
 ## 1. Terminado y verificado
 
 | Elemento | Verificación |
 |---|---|
-| Frontend React (10 áreas, responsive, en español) | 10 pruebas de componentes; E2E 18/18 en Chromium; sin desbordamiento en móvil/tablet/escritorio |
-| API REST (auth, roles, negocio, servicios, horarios, clientes, reservas, panel) | 48 pruebas contra MySQL 8; Newman 42 peticiones / 55 aserciones |
-| Prevención de doble reserva | 10 reservas simultáneas → 1 confirmada; sin el bloqueo → 9 duplicadas (prueba de mutación) |
-| Aislamiento entre negocios | 6 pruebas dedicadas + carpeta 5 de Postman |
-| Base de datos (modelo, migración, seed de planes) | Migración aplicada sobre BD vacía en la simulación de despliegue |
-| Scripts de despliegue y rollback de EC2 | Simulación local de 5 escenarios (`docs/evidencias/simulacion-despliegue-ec2.md`) |
-| Plantilla CloudFormation | cfn-lint: 0 errores (1 advertencia documentada) |
-| Workflows de GitHub Actions | actionlint: 0 hallazgos; comandos de CI ejecutados en clon limpio |
-| Auditoría técnica | `AUDITORIA_TECNICA.md`: 15 hallazgos, 13 corregidos y verificados, 2 aceptados/pendientes justificados |
-| Documentación | README, guías Git/AWS, arquitectura, diagramas, documento APA (DOCX/PDF) regenerado y contrastado con el código |
-| Material de sustentación | `SUSTENTACION/` (presentación, React, backend, AWS, CI/CD, 38 preguntas, guion de demo) |
-| Secretos | Escaneo de todo el historial Git: sin credenciales reales |
+| Frontend React (10 áreas, responsive, en español) | 10 pruebas de componentes; E2E 18/18 en local **y contra la URL pública** |
+| API REST (auth, roles, negocio, servicios, horarios, clientes, reservas, panel) | 50 pruebas contra MySQL 8.4; Newman 42 peticiones / 55 aserciones; verificación de producción 11/11 |
+| Prevención de doble reserva | 10 reservas simultáneas → 1 confirmada; prueba de mutación; horario ocupado bloqueado en producción |
+| Validación anti-amplificación (GHSA-mrhx-c7xc-m3w5) | 30 000 filas → 400 con 244 bytes, en local y en producción (H-16) |
+| Repositorio en GitHub | <https://github.com/dylanfuentes0330/agenda-facil>; PR #1–#6 integrados; `main` protegida (PR + 4 checks) |
+| CI en GitHub | Backend, frontend, infraestructura (cfn-lint, ShellCheck, actionlint) y E2E en verde en cada PR/push |
+| Infraestructura AWS | Stack `agenda-facil` `CREATE_COMPLETE`: VPC, EC2 t3.micro, RDS MySQL 8.4.11 privada Single-AZ cifrada, S3 privado, IP elástica. CloudFront **bloqueado por el Learner Lab** → `EnableCloudFront=false` (H-18) |
+| HTTPS | Let's Encrypt en EC2 (vence 2027-02-25, renovación automática), HTTP→HTTPS, HSTS |
+| Base de datos en producción | Usuario `agenda_app` con permisos limitados; migración aplicada por el Deploy; lecturas/escrituras reales verificadas |
+| Almacenamiento de logos | Subida a S3 + URL prefirmada (200) y acceso sin firma denegado (403) |
+| CD (GitHub Actions) | Entorno `production` con revisor obligatorio y solo `main`; Deploy #2: backend desplegado; frontend publicado (comprobación final corregida, H-19) |
+| Auditoría técnica | `AUDITORIA_TECNICA.md`: H-01…H-20 |
+| Evidencias | `docs/evidencias/despliegue-aws.md` y archivos enlazados; 17 capturas de producción en `docs/capturas/aws/` |
+| Secretos | Ninguno en Git ni en logs; contraseñas de producción solo en el equipo del líder y en secretos del entorno `production` |
 
 ## 2. Lo que NO está hecho (y por qué)
 
 | Elemento | Estado | Motivo |
 |---|---|---|
-| Repositorio en GitHub | PENDIENTE DE ACCESO | El repositorio **`dylanfuentes0330/agenda-facil` ya existe y está vacío** (verificado con `git ls-remote`). Desde esta sesión el push fue rechazado (HTTP 403: la instalación de la Claude GitHub App de la sesión no cubre el repositorio, incluso tras ajustar permisos). Se publica desde el equipo de la persona líder (P1) |
-| Ejecución real de CI en GitHub | PENDIENTE DE ACCESO | Depende del repositorio publicado |
-| Commits y Pull Requests de integrantes | PENDIENTE DE INTERVENCIÓN HUMANA | Solo pueden hacerlos los integrantes desde sus cuentas |
-| Despliegue en AWS | PENDIENTE DE ACCESO | No hay sesión de AWS Academy ni autorización de uso de créditos |
-| Dominio personalizado | PENDIENTE DE INTERVENCIÓN HUMANA | No existe dominio; no se compra nada sin autorización |
+| Ejecución del Deploy totalmente en verde | PENDIENTE DE INTERVENCIÓN HUMANA | La corrección H-19 requiere un nuevo despliegue, que debe **aprobar el propietario** en el entorno `production` |
+| CloudFront | BLOQUEADA | El Learner Lab deniega todas sus acciones; la plantilla lo mantiene con `EnableCloudFront=true` para cuentas que lo permitan |
+| Dominio personalizado | PENDIENTE DE INTERVENCIÓN HUMANA | No existe dominio; se usa `sslip.io`. No se compra nada sin autorización |
 | Rol IAM de mínimo privilegio | BLOQUEADA | Learner Lab no permite crear roles; se usa `LabInstanceProfile` (documentado) |
-| Portada del documento, integrantes, capturas de AWS, verificación de referencias | PENDIENTE DE INTERVENCIÓN HUMANA | Datos personales y evidencias que solo el equipo tiene |
+| Capturas de la consola de AWS y de GitHub | PENDIENTE DE INTERVENCIÓN HUMANA | Deben tomarse desde las cuentas del equipo (`docs/evidencias-requeridas.md`) |
+| Commits y PRs de cada integrante | PENDIENTE DE INTERVENCIÓN HUMANA | Solo pueden hacerlos los integrantes desde sus cuentas |
+| Portada del documento, integrantes, verificación de referencias | PENDIENTE DE INTERVENCIÓN HUMANA | Datos personales que solo el equipo tiene |
 
 ## 3. Acciones del equipo, en orden de prioridad
 
-### P1. Publicar el repositorio (líder) — PENDIENTE DE ACCESO
-1. El repositorio vacío **ya existe**: <https://github.com/dylanfuentes0330/agenda-facil>. Verificar que sea **Public** (*Settings → General → Danger Zone → Change visibility*), necesario para proteger ramas en cuentas gratuitas.
-2. En el equipo de la persona líder, con [GitHub CLI](https://cli.github.com/) instalado:
+### P1. Antes de la demostración (responsable AWS)
+1. AWS Academy → Learner Lab → **Start Lab** ~10 minutos antes (EC2 vuelve a arrancar; la IP elástica mantiene la URL).
+2. Si RDS se detuvo para ahorrar créditos, iniciarla (tarda ~5 min):
 
 ```bash
-gh auth login
+aws rds start-db-instance --db-instance-identifier agenda-facil-db
 ```
+
+3. Comprobar `https://52-54-96-26.sslip.io/api/health` → `"database":"ok"`.
+4. Después de la demostración, detener RDS para no consumir créditos fuera de la sesión:
 
 ```bash
-git clone ENTREGA_FINAL/02_CODIGO_FUENTE/agenda-facil-repositorio.bundle agenda-facil
+aws rds stop-db-instance --db-instance-identifier agenda-facil-db
 ```
 
-```bash
-cd agenda-facil && for b in $(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | grep -v '^HEAD$'); do git show-ref -q --heads "$b" || git branch --track "$b" "origin/$b"; done && git remote remove origin
-```
-
-```bash
-bash scripts/github/publicar-en-github.sh dylanfuentes0330 agenda-facil public
-```
-
-3. *Settings → Collaborators → Add people*: invitar a cada integrante (cada uno acepta desde su correo o <https://github.com/notifications>).
-4. *Pull requests → New pull request*: base `develop` ← compare `fix/auditoria-final` → *Create pull request*. Esto ejecuta el CI real. Pedir a otro integrante que lo revise y apruebe; luego *Merge*. Después PR `develop → main`.
-5. Captura de *Actions* con los 4 jobs en verde. Si algo falla, copiar el log del job fallido para corregirlo.
-
-> Alternativa: iniciar una **nueva** sesión de Claude Code con el repositorio `dylanfuentes0330/agenda-facil`
-> seleccionado (tras instalar la Claude GitHub App en él desde <https://github.com/apps/claude/installations/select_target>)
-> y pedir que publique el bundle y ejecute el CI.
+5. Al cerrar el curso, **si el equipo lo decide**, liberar todo con `99-eliminar-infraestructura.sh` (deja un snapshot de RDS;
+acción destructiva que el asistente no ejecutó).
 
 ### P2. Aportes individuales (cada integrante) — PENDIENTE DE INTERVENCIÓN HUMANA
 Antes: completar perfil (foto, nombre, bio) y configurar Git con el correo de su cuenta:
@@ -75,7 +69,7 @@ git config --global user.email "correo-de-tu-cuenta@ejemplo.com"
 | Frontend | `feature/frontend` | En `frontend/src/pages/business/Dashboard.jsx`, mostrar el teléfono del cliente en “Próximas reservas” | `npm test --prefix frontend` y captura |
 | Backend | `feature/backend` | Endpoint `GET /api/business/reservations/export` que devuelva CSV de las citas del rango, con una prueba en `backend/tests/api/` | `npm test --prefix backend` |
 | Base de datos | `feature/database` | Migración que agregue un índice útil (p. ej. `clients(business_id, phone)`) con `npm run db:migrate:dev --prefix backend -- --name indice_telefono` | Migración en el PR |
-| AWS / DevOps | `feature/aws-deployment` | Ejecutar `00-verificar-servicios.sh` y subir `docs/evidencias/verificacion-servicios.txt`; actualizar `docs/guia-aws-academy.md` con lo observado | Archivo en el PR |
+| AWS / DevOps | `feature/aws-deployment` | Tomar las capturas de consola AWS de `docs/evidencias-requeridas.md` (stack, EC2, SG, RDS, S3) en `docs/capturas/aws/` y enlazarlas desde `docs/evidencias/despliegue-aws.md` | Capturas en el PR |
 | Documentación | `feature/documentation` | Completar `PORTADA` en `docs/documento-academico/generar_documento.py` y la tabla de integrantes del README; regenerar el documento | DOCX/PDF en el PR |
 
 Flujo para cada uno:
@@ -94,27 +88,10 @@ git push -u origin feature/frontend-telefono-proximas
 
 Luego en GitHub: *Compare & pull request* → base `develop` → asignar revisor → esperar CI verde → *Merge*.
 
-### P3. AWS Academy (responsable AWS) — PENDIENTE DE ACCESO
-1. AWS Academy → curso → *Learner Lab* → **Start Lab** → *AWS Details* → copiar credenciales y descargar `labsuser.pem`.
-2. Confirmar créditos disponibles en la parte superior del laboratorio (el stack usa EC2 t3.micro, RDS db.t3.micro, CloudFront y S3).
-3. Verificar servicios (solo lectura, sin costo):
+### P4. Dominio (opcional) — PENDIENTE DE INTERVENCIÓN HUMANA
+Despliegue actual sin CloudFront: con el dominio, crear un registro **A** hacia `52.54.96.26`, ejecutar en EC2
+`sudo bash configurar-https.sh www.tudominio.com` y actualizar `PUBLIC_ORIGIN`. Los pasos siguientes aplican al modo CloudFront.
 
-```bash
-bash infra/aws/scripts/00-verificar-servicios.sh
-```
-
-4. Si todo aparece `[OK]`, desplegar (crea recursos con costo en créditos):
-
-```bash
-export DB_MASTER_PASSWORD='Elige_Una_Clave_2026' && bash infra/aws/scripts/01-desplegar-infraestructura.sh
-```
-
-5. Crear el usuario de aplicación en RDS desde EC2 (guía §4) y configurar secretos/variables de GitHub (guía §5).
-6. *Settings → Secrets and variables → Actions → Variables → New*: `AWS_DEPLOY_ENABLED` = `true`; luego *Actions → Deploy → Run workflow*.
-7. Verificar `https://<CloudFrontUrl>/api/health` y tomar capturas (`docs/evidencias-requeridas.md`).
-8. Después de la sustentación, **si el equipo lo decide**, liberar créditos con `99-eliminar-infraestructura.sh` (acción destructiva; el asistente no la ejecutó).
-
-### P4. Dominio — PENDIENTE DE INTERVENCIÓN HUMANA
 1. Obtener un dominio en un registrador (o verificar si el curso/programa estudiantil ofrece uno). **El asistente no compra nada.**
 2. *Certificate Manager* (región **N. Virginia / us-east-1**) → *Request* → *Public certificate* → `www.tudominio.com` → *DNS validation* → crear en el DNS del dominio el **CNAME de validación** que muestra ACM.
 3. Opción Route 53: *Hosted zones → Create* → copiar los 4 registros **NS** al registrador. Opción sin Route 53: en el registrador crear **CNAME** `www` → `dxxxx.cloudfront.net`.
@@ -131,8 +108,8 @@ curl -s https://www.tudominio.com/api/health
 ### P5. Documento académico — PENDIENTE DE INTERVENCIÓN HUMANA
 1. Completar `PORTADA` en `docs/documento-academico/generar_documento.py` (los campos aparecen resaltados en amarillo en el DOCX).
 2. Abrir cada URL de la sección *Referencias* y confirmar que carga (el entorno de desarrollo no tenía acceso a esos sitios).
-3. Si se desplegó: agregar capturas reales de AWS en la sección 16 y cambiar el estado de “no desplegado” solo para lo que se haya verificado.
-4. Recalcular los costos en <https://calculator.aws/> y añadir el enlace de la estimación (sección 18).
+3. **Ya desplegado**: actualizar la sección 16 con `docs/evidencias/despliegue-aws.md` (URL, recursos, modo sin CloudFront y motivo) y las capturas de `docs/capturas/aws/`, y cambiar el estado de “no desplegado” solo para lo verificado.
+4. Recalcular los costos en <https://calculator.aws/> (referencia: tabla de `docs/evidencias/despliegue-aws.md` §6) y añadir el enlace de la estimación (sección 18).
 5. Regenerar:
 
 ```bash

@@ -171,7 +171,7 @@ puede re-desplegar un tag anterior desde Actions o ejecutar `rollback.sh` en EC2
 ## Calidad y escalabilidad
 
 **36. ¿Qué pruebas tiene el proyecto?**
-48 pruebas de backend (unitarias y de API contra MySQL), 10 de frontend, una prueba E2E de 18 pasos en Chromium y una
+50 pruebas de backend (unitarias y de API contra MySQL), 10 de frontend, una prueba E2E de 18 pasos en Chromium y una
 colección Postman de 42 peticiones (55 aserciones). Además, verificaciones de mutación que demuestran que las pruebas de
 concurrencia y anti-abuso detectan el error si se elimina la protección.
 

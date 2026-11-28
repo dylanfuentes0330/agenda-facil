@@ -10,8 +10,10 @@ re-ejecutó o se revisó contra el código. Las correcciones están en la rama `
 - Se encontraron **2 errores críticos en el despliegue** que habrían hecho fallar el primer despliegue real o el
   rollback, **3 errores en una corrección intermedia y en workflows**, **2 riesgos de seguridad** y varias
   **inconsistencias documentales**. Todos fueron corregidos y verificados (ver §3).
-- **Nada está desplegado en AWS, no existe dominio y el repositorio no está publicado en GitHub.** Los workflows
-  nunca se han ejecutado en GitHub. Estos puntos requieren acceso o intervención del equipo.
+- **Actualización 2026-11-28:** el repositorio está publicado en GitHub (CI en verde en cada PR/push, `main`
+  protegida) y la aplicación está **desplegada en AWS Academy Learner Lab** en <https://52-54-96-26.sslip.io>,
+  verificada con el E2E completo contra la URL pública (18/18). El despliegue real destapó H-18 a H-20 (abajo).
+  No existe dominio propio. Evidencias: [`docs/evidencias/despliegue-aws.md`](docs/evidencias/despliegue-aws.md).
 
 ## 2. Verificación del informe anterior
 
@@ -51,6 +53,9 @@ Severidad: **Crítica** (impide la entrega/operación) · **Alta** · **Media** 
 | H-14 | Info | `.env.test` | Contenía una contraseña de base de datos **local de pruebas**. Ahora el archivo versionado solo tiene el marcador `CLAVE_LOCAL`; la credencial real de cada desarrollador va en `backend/.env.test.local` (ignorado por Git), que las pruebas cargan con prioridad. CI usa su propio contenedor efímero vía variable de entorno. | Escaneo de secretos | Credencial movida a archivo local ignorado; `tests/global-setup.js` avisa si se usa el marcador | Corregido |
 | H-15 | Info | Nginx | `nginx -t` valida la sintaxis; el único error es `listen [::]:80` porque este contenedor no tiene IPv6 (AL2023 sí). | `nginx -t` | Ninguna | Aceptado |
 | H-16 | Alta | Validación (Zod 3) | GHSA-mrhx-c7xc-m3w5: Zod < 4.6.6 valida cada elemento de colecciones con restricción de tamaño aunque la longitud ya sea inválida. `PUT /api/business/hours` con un array de ~30 000 filas (< 100 KB) generaba ~120 000 errores y una respuesta de varios MB (amplificación de CPU/memoria). La única corrección de npm es Zod 4 (cambio mayor). | `npm audit`; prueba con 30 000 filas | Se valida primero la longitud exacta (`z.array(z.unknown()).length(7).pipe(...)`) y el manejador de errores devuelve como máximo 20 detalles. 2 pruebas nuevas (respuesta < 2 KB). Zod se mantiene en 3.25.76 (es el único array de entrada de la API) | Mitigado y probado |
+| H-18 | Alta | Learner Lab / CloudFront | El Learner Lab del equipo **deniega todas las acciones de CloudFront** (`list-*`, `get-distribution` → `AccessDenied`): la plantilla no podía crearse tal cual. | `00-verificar-servicios.sh` + llamadas de solo lectura | Parámetro `EnableCloudFront` (por defecto `true`). Con `false`: sin bucket de frontend ni CloudFront, SG 80/443, Nginx sirve la SPA, `configurar-https.sh` (Let's Encrypt), el workflow publica el frontend por SSH sin credenciales AWS, `TRUST_PROXY` configurable | Corregido y desplegado |
+| H-19 | Media | `remote-frontend.sh` (nuevo) | En el primer Deploy real el frontend quedó publicado pero el job falló: tras activar HTTPS, `http://127.0.0.1/` ya no sirve la SPA (certbot deja el 80 solo para redirigir el nombre público). | Deploy #2, job *Frontend* | La comprobación acepta HTTP o HTTPS local; probado en el servidor | Corregido y verificado en EC2 |
+| H-20 | Baja | Nginx | El bloque de redirección creado por certbot mostraba la versión de Nginx en la cabecera `Server`. | `curl -I` | `server_tokens off` global en `conf.d/00-seguridad.conf` | Corregido y verificado |
 | H-17 | Media | Dependencias | `npm audit` del backend: `prisma` 6.19.3 (CLI, vía `@prisma/config` → `deepmerge-ts`, `effect`) y `vitest` 3.2 (`tinypool`, `@vitest/mocker`). Solo se corrigen con Prisma 7 / Vitest 5 (cambios mayores). Prisma CLI solo procesa la configuración del propio repositorio en `migrate deploy` (no recibe entrada de usuarios); Vitest es de desarrollo y no se instala con `--omit=dev`. Frontend: `npm audit --omit=dev` = 0 vulnerabilidades. | `npm audit`, `npm audit --omit=dev` | No se actualizan versiones mayores sin una migración planificada (Prisma 7 exige `prisma.config.ts` y adaptadores) | Aceptado y documentado |
 
 ## 4. Revisión por área (lo que se verificó y está correcto)
@@ -83,19 +88,21 @@ Severidad: **Crítica** (impide la entrega/operación) · **Alta** · **Media** 
 | Tráfico CloudFront → EC2 por HTTP | Datos sin cifrar dentro de la red de AWS | Mejora futura: TLS en el origen o balanceador |
 | `LabRole` con permisos amplios | No se cumple el mínimo privilegio en el laboratorio | Políticas objetivo en `infra/aws/iam` |
 | Token JWT en `localStorage` | Exposición ante XSS | Expiración de 8 h; React escapa el contenido; sin HTML de usuario |
-| Credenciales del Learner Lab caducan | El workflow Deploy falla si no se actualizan | Actualizar secretos antes de cada despliegue |
+| Credenciales del Learner Lab caducan | Solo afecta al modo CloudFront (el despliegue real no usa credenciales AWS en GitHub) | Actualizar secretos antes de cada despliegue si se usa CloudFront |
+| La app solo responde con la sesión del Learner Lab iniciada | Fuera de sesión EC2 se detiene y la URL no carga | Iniciar el laboratorio ~10 min antes de la demostración; la IP elástica conserva la URL |
+| Dependencia del DNS público `sslip.io` | Si el servicio fallara, la URL no resolvería | Acceso alternativo por IP; con un dominio propio basta un registro A y `configurar-https.sh` |
 | Historial inicial con autor “Claude Code (asistente IA)” | No acredita trabajo de integrantes | Cada integrante debe hacer commits y PRs propios |
 
 ## 6. Estado real de cada componente
 
 | Componente | Diseñado | Desarrollado | Probado | Desplegado |
 |---|---|---|---|---|
-| Frontend | Sí | Sí | Sí (local) | No |
-| Backend / API | Sí | Sí | Sí (local, 50 pruebas) | No |
-| Base de datos | Sí | Sí | Sí (MySQL 8 local) | No |
-| Scripts de despliegue y rollback | Sí | Sí | Simulación local (5/5) | No |
-| CloudFormation | Sí | Sí | Validación estática | No |
-| CI | Sí | Sí | Comandos en clon limpio + actionlint | No ejecutado en GitHub |
-| CD | Sí | Sí | actionlint + simulación del script remoto | No ejecutado |
-| Dominio | Sí | Configuración preparada | No | No existe |
+| Frontend | Sí | Sí | Sí (local y E2E en producción) | Sí (Nginx en EC2) |
+| Backend / API | Sí | Sí | Sí (local, 50 pruebas; verificación en producción 11/11) | Sí (EC2) |
+| Base de datos | Sí | Sí | Sí (MySQL 8.4 local y RDS) | Sí (RDS MySQL 8.4.11 privada) |
+| Scripts de despliegue y rollback | Sí | Sí | Simulación local (5/5) + despliegue real | Sí |
+| CloudFormation | Sí | Sí | cfn-lint + `CREATE_COMPLETE` | Sí (`EnableCloudFront=false`) |
+| CI | Sí | Sí | Ejecutado en GitHub (4 jobs en verde) | — |
+| CD | Sí | Sí | Deploy real: backend OK; frontend publicado, comprobación corregida (H-19) | Sí |
+| Dominio | Sí | Configuración preparada | No | No existe (se usa `sslip.io`) |
 | Documento académico | Sí | Sí | Revisado contra el código | Faltan datos personales y capturas AWS |

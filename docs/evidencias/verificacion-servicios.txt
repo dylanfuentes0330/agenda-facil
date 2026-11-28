@@ -1,0 +1,19 @@
+Verificación de servicios AWS — 2026-11-28T00:34:10Z — región us-east-1
+Identidad: arn:aws:sts::<cuenta>:assumed-role/voclabs/<usuario-learner-lab>
+[OK]        EC2 (describe-instances)
+[OK]        EC2 key pair vockey
+[OK]        Perfil IAM LabInstanceProfile
+[OK]        RDS (describe-db-instances)
+[OK]        RDS motores MySQL 8.4
+[OK]        S3 (list-buckets)
+[BLOQUEADO] CloudFront (list-distributions)  →  aws cloudfront list-distributions --max-items 1
+[BLOQUEADO] CloudFront functions  →  aws cloudfront list-functions --max-items 1
+[OK]        Route 53 (list-hosted-zones)
+[OK]        ACM us-east-1 (list-certificates)
+[OK]        CloudFormation (list-stacks)
+[OK]        SSM parámetro AMI Amazon Linux 2023
+
+Prefix list de CloudFront (origin-facing) en us-east-1:
+pl-3b927c52
+
+Nota: [OK] en una operación de lectura no garantiza permiso de creación; el despliegue real lo confirma.

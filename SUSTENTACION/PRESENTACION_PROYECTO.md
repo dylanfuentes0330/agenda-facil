@@ -28,7 +28,7 @@ hay pasarela de pago (mejora futura).
 | Datos | MySQL 8 con Prisma (migraciones versionadas) |
 | Seguridad | JWT, bcrypt, Zod, helmet, rate limiting, aislamiento multi-tenant |
 | Nube (arquitectura) | EC2, RDS, S3, CloudFront, Route 53, IAM — definidos con CloudFormation |
-| Calidad | 48 pruebas de backend, 10 de frontend, E2E en navegador (18 pasos), Postman (55 aserciones) |
+| Calidad | 50 pruebas de backend, 10 de frontend, E2E en navegador (18 pasos), Postman (55 aserciones) |
 | CI/CD | GitHub Actions: lint, pruebas, build, validación de infraestructura, E2E y despliegue con rollback |
 
 ## 5. Arquitectura en una frase (20 s)
