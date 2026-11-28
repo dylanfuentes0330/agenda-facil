@@ -133,8 +133,11 @@ const hourRow = z
 
 export const hoursSchema = z.object({
   hours: z
-    .array(hourRow)
+    // Primero se exige la longitud exacta y solo después se valida cada fila: un array enorme se
+    // rechaza con un número fijo de errores en vez de uno por elemento (GHSA-mrhx-c7xc-m3w5).
+    .array(z.unknown())
     .length(7, 'Debes enviar los 7 días de la semana')
+    .pipe(z.array(hourRow))
     .refine((rows) => new Set(rows.map((r) => r.dayOfWeek)).size === 7, 'Cada día de la semana debe aparecer una sola vez'),
 });
 
