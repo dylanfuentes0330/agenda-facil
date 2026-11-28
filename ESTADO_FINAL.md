@@ -20,7 +20,7 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 | HTTPS | Let's Encrypt en EC2 (vence 2027-02-25, renovación automática), HTTP→HTTPS, HSTS |
 | Base de datos en producción | Usuario `agenda_app` con permisos limitados; migración aplicada por el Deploy; lecturas/escrituras reales verificadas |
 | Almacenamiento de logos | Subida a S3 + URL prefirmada (200) y acceso sin firma denegado (403) |
-| CD (GitHub Actions) | Entorno `production` con revisor obligatorio y solo `main`; Deploy #2: backend desplegado; frontend publicado (comprobación final corregida, H-19) |
+| CD (GitHub Actions) | Entorno `production` con revisor obligatorio y solo `main`; **Deploy #3 en verde (3/3 jobs)** con la versión final `6aa1439` |
 | Auditoría técnica | `AUDITORIA_TECNICA.md`: H-01…H-20 |
 | Evidencias | `docs/evidencias/despliegue-aws.md` y archivos enlazados; 17 capturas de producción en `docs/capturas/aws/` |
 | Secretos | Ninguno en Git ni en logs; contraseñas de producción solo en el equipo del líder y en secretos del entorno `production` |
@@ -29,7 +29,6 @@ necesita una persona. Clasificación: **COMPLETADA Y VERIFICADA** · **CONFIGURA
 
 | Elemento | Estado | Motivo |
 |---|---|---|
-| Ejecución del Deploy totalmente en verde | PENDIENTE DE INTERVENCIÓN HUMANA | La corrección H-19 requiere un nuevo despliegue, que debe **aprobar el propietario** en el entorno `production` |
 | CloudFront | BLOQUEADA | El Learner Lab deniega todas sus acciones; la plantilla lo mantiene con `EnableCloudFront=true` para cuentas que lo permitan |
 | Dominio personalizado | PENDIENTE DE INTERVENCIÓN HUMANA | No existe dominio; se usa `sslip.io`. No se compra nada sin autorización |
 | Rol IAM de mínimo privilegio | BLOQUEADA | Learner Lab no permite crear roles; se usa `LabInstanceProfile` (documentado) |

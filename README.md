@@ -306,7 +306,7 @@ Secretos y variables necesarios: ver encabezado de [`deploy.yml`](.github/workfl
 [docs/guia-aws-academy.md](docs/guia-aws-academy.md).
 
 > CI se ejecuta en GitHub en cada PR y push a `develop`/`main` (4 jobs en verde). `main` está protegida (PR obligatorio
-> + checks de CI). El primer Deploy real desplegó el backend y el frontend en AWS (ver
+> + checks de CI). El Deploy #3 publicó la versión final en AWS con los 3 jobs en verde (ver
 > [evidencias](docs/evidencias/despliegue-aws.md#4-despliegue-con-github-actions)).
 
 ## Despliegue en AWS Academy
@@ -380,7 +380,7 @@ buckets S3 privados con OAC · IMDSv2 · usuario de BD de aplicación con privil
 | Backend API REST + reglas de negocio | ✅ Desarrollado y probado localmente (MySQL 8) |
 | Base de datos (modelo, migraciones, seed) | ✅ Desarrollado |
 | Pruebas (unitarias, API, componentes, E2E, Postman) | ✅ Ejecutadas con éxito en local |
-| Workflows CI/CD | ✅ CI en verde en GitHub; Deploy ejecutado (backend y frontend publicados en AWS) |
+| Workflows CI/CD | ✅ CI en verde en GitHub; Deploy #3 en verde (backend y frontend publicados en AWS) |
 | Infraestructura AWS (CloudFormation, scripts) | ✅ Desplegada en Learner Lab (`CREATE_COMPLETE`, modo sin CloudFront por bloqueo del laboratorio) |
 | Aplicación en producción | ✅ <https://52-54-96-26.sslip.io> — E2E 18/18 y verificación técnica 11/11 contra la URL pública |
 | Dominio personalizado | ⏳ Sin dominio propio (se usa `sslip.io`); pasos documentados para conectar uno |

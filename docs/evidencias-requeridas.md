@@ -36,7 +36,7 @@ deben presentarse como tales, no como evidencia de AWS.
 - [ ] Lista de ramas (`main`, `develop`, `feature/*`).
 - [ ] Reglas de protección de `main` y `develop`.
 - [ ] Pestaña *Actions*: ejecución del workflow **CI** en verde (detalle de los 3 jobs).
-- [ ] Ejecución del workflow **Deploy** (Deploy #2 desplegó backend y frontend; capturar la siguiente ejecución en verde).
+- [ ] Captura de la ejecución del workflow **Deploy #3** en verde (3/3 jobs): <https://github.com/dylanfuentes0330/agenda-facil/actions/runs/46093645654>.
 - [ ] Issues creados con las plantillas y asignados.
 
 ### AWS Academy
