@@ -1,6 +1,6 @@
 # Despliegue real en AWS Academy Learner Lab
 
-Fecha: **2026-11-28** · Región: **us-east-1** · Stack: **`agenda-facil`** · Commit desplegado: **`1bb06cc`** (`main`)
+Fecha: **2026-11-28** · Región: **us-east-1** · Stack: **`agenda-facil`** · Commit desplegado: **`6aa1439`** (`main`, Deploy #3)
 
 **URL pública: <https://52-54-96-26.sslip.io>** (HTTPS con certificado de Let's Encrypt; HTTP redirige a HTTPS).
 
@@ -69,7 +69,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER ON 
     `20261127002845_init` aplicada en RDS), seed de planes, health check correcto.
   - `Frontend → EC2`: el frontend **quedó publicado**, pero el job terminó en error por la comprobación final de
     `remote-frontend.sh` (tras activar HTTPS, `http://127.0.0.1/` ya no sirve la SPA). Corregido en `192a3a1`
-    (acepta HTTPS local) y probado en el servidor (`rc=0`); el siguiente despliegue lo ejecuta desde el workflow.
+    (acepta HTTPS local) y probado en el servidor (`rc=0`).
+- Ejecución [Deploy #3](https://github.com/dylanfuentes0330/agenda-facil/actions/runs/46093645654) del commit `6aa1439`
+  (versión final de `main`): **3/3 jobs en verde** (autorizar, backend → EC2, frontend → EC2). Después,
+  `/api/health` → `{"status":"ok","database":"ok","version":"6aa1439"}`, verificación técnica 11/11 y E2E 18/18 repetidos.
 
 ## 5. Funcionamiento verificado en producción
 
